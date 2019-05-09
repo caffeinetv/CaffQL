@@ -304,41 +304,6 @@ void from_json(Json const & json, Schema & schema) {
     get_value_to(json, "types", schema.types);
 }
 
-constexpr size_t spacesPerIndent = 4;
-const std::string unknownEnumCase = "Unknown";
-
-std::string indent(size_t indentation) {
-    return std::string(indentation * spacesPerIndent, ' ');
-}
-
-void appendDescription(std::string & string, std::string const & description, size_t indentation) {
-    if (description.empty()) {
-        return;
-    }
-    string += indent(indentation) + "// " + description + "\n";
-}
-
-std::string screamingSnakeCaseToPascalCase(std::string const & snake) {
-    std::string pascal;
-
-    bool isFirstInWord = true;
-    for (auto const & character : snake) {
-        if (character == '_') {
-            isFirstInWord = true;
-            continue;
-        }
-
-        if (isFirstInWord) {
-            pascal += toupper(character);
-            isFirstInWord = false;
-        } else {
-            pascal += tolower(character);
-        }
-    }
-
-    return pascal;
-}
-
 std::vector<Schema::Type> sortCustomTypesByDependencyOrder(std::vector<Schema::Type> const &types) {
     using namespace std;
 
@@ -429,6 +394,62 @@ std::vector<Schema::Type> sortCustomTypesByDependencyOrder(std::vector<Schema::T
     return sortedTypes;
 }
 
+constexpr size_t spacesPerIndent = 4;
+const std::string unknownEnumCase = "Unknown";
+
+std::string indent(size_t indentation) {
+    return std::string(indentation * spacesPerIndent, ' ');
+}
+
+void appendDescription(std::string & string, std::string const & description, size_t indentation) {
+    if (description.empty()) {
+        return;
+    }
+
+    // Insert a line break before comments
+    string += "\n";
+
+    if (description.find('\n') == std::string::npos) {
+        string += indent(indentation) + "// " + description + "\n";
+    } else {
+        // Use block comments for multiline strings
+
+        string += indent(indentation) + "/* ";
+
+        for (auto const character : description) {
+            if (character == '\n') {
+                string += "\n" + indent(indentation);
+                continue;
+            }
+
+            string += character;
+        }
+
+        string += " */\n";
+    }
+}
+
+std::string screamingSnakeCaseToPascalCase(std::string const & snake) {
+    std::string pascal;
+
+    bool isFirstInWord = true;
+    for (auto const & character : snake) {
+        if (character == '_') {
+            isFirstInWord = true;
+            continue;
+        }
+
+        if (isFirstInWord) {
+            pascal += toupper(character);
+            isFirstInWord = false;
+        } else {
+            pascal += tolower(character);
+        }
+    }
+
+    return pascal;
+}
+
 std::string generateEnum(Schema::Type const & type, size_t indentation) {
     std::string generated;
     generated += indent(indentation) + "enum class " + type.name + " {\n";
@@ -465,6 +486,113 @@ std::string generateEnumSerialization(Schema::Type const & type, size_t indentat
     return generated;
 }
 
+Schema::Type::Scalar scalarType(std::string const & name) {
+    if (name == "Int") {
+        return Schema::Type::Scalar::Int;
+    } else if (name == "Float") {
+        return Schema::Type::Scalar::Float;
+    } else if (name == "String") {
+        return Schema::Type::Scalar::String;
+    } else if (name == "Boolean") {
+        return Schema::Type::Scalar::Boolean;
+    } else if (name == "ID") {
+        return Schema::Type::Scalar::ID;
+    }
+
+    throw std::runtime_error{"Unknown scalar type: " + name};
+}
+
+std::string cppType(Schema::Type::Scalar scalar) {
+    switch (scalar) {
+        case Schema::Type::Scalar::Int:
+            return "int32_t";
+        case Schema::Type::Scalar::Float:
+            return "double";
+        case Schema::Type::Scalar::String:
+        // TODO: Separate ID type?
+        case Schema::Type::Scalar::ID:
+            return "std::string";
+        case Schema::Type::Scalar::Boolean:
+            return "bool";
+    }
+}
+
+std::string cppType(Schema::Type::TypeRef type) {
+    switch (type.kind) {
+        case Schema::Type::Kind::Object:
+        case Schema::Type::Kind::Interface:
+        case Schema::Type::Kind::Union:
+        case Schema::Type::Kind::Enum:
+        case Schema::Type::Kind::InputObject:
+            return type.name.value();
+
+        case Schema::Type::Kind::Scalar:
+            return cppType(scalarType(type.name.value()));
+
+        case Schema::Type::Kind::List:
+            return "std::vector<" + cppType(*type.ofType) + ">";
+
+        case Schema::Type::Kind::NonNull:
+            return "std::optional<" + cppType(*type.ofType) + ">";
+    }
+}
+
+template <typename T>
+std::string generateField(T const & field, size_t indentation) {
+    std::string generated;
+    appendDescription(generated, field.description, indentation);
+    generated += indent(indentation) + cppType(field.type) + " " + field.name + ";\n";
+    return generated;
+}
+
+std::string generateInterface(Schema::Type const & type, size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + "struct " + type.name + " {\n";
+
+    auto const fieldIndentation = indentation + 1;
+
+    for (auto const & field : type.fields) {
+        generated += generateField(field, fieldIndentation);
+    }
+
+    generated += "};\n\n";
+
+    return generated;
+}
+
+std::string generateObject(Schema::Type const & type, size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + "struct " + type.name + " {\n";
+
+    auto const fieldIndentation = indentation + 1;
+
+    for (auto const & field : type.fields) {
+        generated += generateField(field, fieldIndentation);
+    }
+
+    generated += "};\n\n";
+
+    return generated;
+}
+
+std::string generateInputObject(Schema::Type const & type, size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + "struct " + type.name + " {\n";
+
+    auto const fieldIndentation = indentation + 1;
+
+    for (auto const & field : type.inputFields) {
+        generated += generateField(field, fieldIndentation);
+    }
+
+    generated += "};\n\n";
+
+    return generated;
+}
+
 std::string generateTypes(Schema const & schema) {
     auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
 
@@ -488,16 +616,16 @@ std::string generateTypes(Schema const & schema) {
                 } else if (isSpecialType(schema.subscriptionType)) {
 
                 } else {
-
+                    source += generateObject(type, typeIndentation);
                 }
                 break;
 
             case Schema::Type::Kind::Interface:
-
+                source += generateInterface(type, typeIndentation);
                 break;
 
             case Schema::Type::Kind::Union:
-
+                // TODO: Union support
                 break;
 
             case Schema::Type::Kind::Enum:
@@ -506,7 +634,7 @@ std::string generateTypes(Schema const & schema) {
                 break;
 
             case Schema::Type::Kind::InputObject:
-
+                source += generateInputObject(type, typeIndentation);
                 break;
 
             case Schema::Type::Kind::Scalar:
