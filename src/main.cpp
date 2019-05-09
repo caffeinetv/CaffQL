@@ -152,13 +152,13 @@ struct Schema {
         std::vector<TypeRef> possibleTypes;
     };
 
-    struct TypeName {
+    struct SpecialType {
         std::string name;
     };
 
-    std::optional<TypeName> queryType;
-    std::optional<TypeName> mutationType;
-    std::optional<TypeName> subscriptionType;
+    std::optional<SpecialType> queryType;
+    std::optional<SpecialType> mutationType;
+    std::optional<SpecialType> subscriptionType;
     std::vector<Type> types;
     // TODO: Directives
 };
@@ -293,8 +293,8 @@ void from_json(Json const & json, Schema::Type & type) {
     get_value_to(json, "possibleTypes", type.possibleTypes);
 }
 
-void from_json(Json const & json, Schema::TypeName & typeName) {
-    get_value_to(json, "name", typeName.name);
+void from_json(Json const & json, Schema::SpecialType & special) {
+    get_value_to(json, "name", special.name);
 }
 
 void from_json(Json const & json, Schema & schema) {
@@ -466,16 +466,30 @@ std::string generateEnumSerialization(Schema::Type const & type, size_t indentat
 }
 
 std::string generateTypes(Schema const & schema) {
+    auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
+
     std::string source;
 
-    auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
+    source += "// This file was automatically generated and should not be edited.\n\n";
 
     size_t typeIndentation = 0;
 
     for (auto const & type : sortedTypes) {
+        auto isSpecialType = [&](std::optional<Schema::SpecialType> const & special) {
+            return special && special->name == type.name;
+        };
+
         switch (type.kind) {
             case Schema::Type::Kind::Object:
+                if (isSpecialType(schema.queryType)) {
 
+                } else if (isSpecialType(schema.mutationType)) {
+
+                } else if (isSpecialType(schema.subscriptionType)) {
+
+                } else {
+
+                }
                 break;
 
             case Schema::Type::Kind::Interface:
