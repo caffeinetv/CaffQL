@@ -1,5 +1,6 @@
 #include "nlohmann/json.hpp"
 #include <fstream>
+#include <unordered_set>
 
 template <typename T>
 struct BoxedOptional {
@@ -47,12 +48,20 @@ struct BoxedOptional {
         return has_value();
     }
 
-    T & operator*() {
+    T & operator * () {
         return *value;
     }
 
-    T const & operator*() const {
+    T const & operator * () const {
         return *value;
+    }
+
+    T * operator -> () {
+        return value;
+    }
+
+    T const * operator -> () const {
+        return value;
     }
 
 private:
@@ -95,8 +104,16 @@ struct Schema {
         struct TypeRef {
             Kind kind;
             std::optional<std::string> name;
-            // Optional
+            // NonNull and List only
             BoxedOptional<TypeRef> ofType;
+
+            TypeRef const & underlyingType() const {
+                if (ofType) {
+                    return ofType->underlyingType();
+                }
+                return *this;
+            }
+
         };
 
         struct InputValue {
@@ -123,10 +140,15 @@ struct Schema {
         Kind kind;
         std::string name;
         std::string description;
+        // Object and Interface only
         std::vector<Field> fields;
+        // InputObject only
         std::vector<InputValue> inputFields;
+        // Object only
         std::vector<TypeRef> interfaces;
+        // Enum only
         std::vector<EnumValue> enumValues;
+        // Interface and Union only
         std::vector<TypeRef> possibleTypes;
     };
 
@@ -282,15 +304,176 @@ void from_json(Json const & json, Schema & schema) {
     get_value_to(json, "types", schema.types);
 }
 
+constexpr size_t spacesPerIndent = 4;
+const std::string unknownEnumCase = "Unknown";
+
+std::string indent(size_t indentation) {
+    return std::string(indentation * spacesPerIndent, ' ');
+}
+
+void appendDescription(std::string & string, std::string const & description, size_t indentation) {
+    if (description.empty()) {
+        return;
+    }
+    string += indent(indentation) + "// " + description + "\n";
+}
+
+std::string screamingSnakeCaseToPascalCase(std::string const & snake) {
+    std::string pascal;
+
+    bool isFirstInWord = true;
+    for (auto const & character : snake) {
+        if (character == '_') {
+            isFirstInWord = true;
+            continue;
+        }
+
+        if (isFirstInWord) {
+            pascal += toupper(character);
+            isFirstInWord = false;
+        } else {
+            pascal += tolower(character);
+        }
+    }
+
+    return pascal;
+}
+
+std::vector<Schema::Type> sortCustomTypesByDependencyOrder(std::vector<Schema::Type> const &types) {
+    using namespace std;
+
+    struct TypeWithDependencies {
+        Schema::Type type;
+        unordered_set<string> dependencies;
+    };
+
+    unordered_map<string, unordered_set<string>> typesToDependents;
+    unordered_map<string, TypeWithDependencies> typesToDependencies;
+
+    auto isCustomType = [](Schema::Type::Kind kind) {
+        switch (kind) {
+            case Schema::Type::Kind::Object:
+            case Schema::Type::Kind::Interface:
+            case Schema::Type::Kind::Union:
+            case Schema::Type::Kind::Enum:
+            case Schema::Type::Kind::InputObject:
+                return true;
+
+            case Schema::Type::Kind::Scalar:
+            case Schema::Type::Kind::List:
+            case Schema::Type::Kind::NonNull:
+                return false;
+        }
+    };
+
+    for (auto const & type : types) {
+        if (!isCustomType(type.kind)) {
+            continue;
+        }
+
+        unordered_set<string> dependencies;
+
+        auto addDependency = [&](auto const &dependency) {
+            if (dependency.name && isCustomType(dependency.kind)) {
+                typesToDependents[*dependency.name].insert(type.name);
+                dependencies.insert(*dependency.name);
+            }
+        };
+
+        for (auto const & field : type.fields) {
+            addDependency(field.type.underlyingType());
+
+            for (auto const & arg : field.args) {
+                addDependency(arg.type.underlyingType());
+            }
+        }
+
+        for (auto const & field : type.inputFields) {
+            addDependency(field.type.underlyingType());
+        }
+
+        for (auto const & interface : type.interfaces) {
+            addDependency(interface);
+        }
+
+        typesToDependencies[type.name] = {type, move(dependencies)};
+    }
+
+    vector<Schema::Type> sortedTypes;
+
+    while (!typesToDependencies.empty()) {
+        auto const initialCount = typesToDependencies.size();
+
+        vector<string> addedTypeNames;
+
+        for (auto const & pair : typesToDependencies) {
+            if (pair.second.dependencies.empty()) {
+                sortedTypes.push_back(pair.second.type);
+                addedTypeNames.push_back(pair.first);
+
+                for (auto const & dependentName : typesToDependents[pair.first]) {
+                    typesToDependencies[dependentName].dependencies.erase(pair.first);
+                }
+            }
+        }
+
+        for (auto const &addedName : addedTypeNames) {
+            typesToDependencies.erase(addedName);
+        }
+
+        if (typesToDependencies.size() == initialCount) {
+            throw runtime_error{"Circular dependencies in schema"};
+        }
+    }
+
+    return sortedTypes;
+}
+
+std::string generateEnum(Schema::Type const & type, size_t indentation) {
+    std::string generated;
+    generated += indent(indentation) + "enum class " + type.name + " {\n";
+
+    auto const valueIndentation = indentation + 1;
+
+    for (auto const & value : type.enumValues) {
+        appendDescription(generated, value.description, valueIndentation);
+        generated += indent(valueIndentation) + screamingSnakeCaseToPascalCase(value.name) + ",\n";
+    }
+
+    generated += indent(valueIndentation) + unknownEnumCase + " = -1\n";
+
+    generated += indent(indentation) + "};\n\n";
+
+    return generated;
+}
+
+std::string generateEnumSerialization(Schema::Type const & type, size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + "NLOHMANN_JSON_SERIALIZE_ENUM(" + type.name + ", {\n";
+
+    auto const valueIndentation = indentation + 1;
+
+    generated += indent(valueIndentation) + "{" + type.name + "::" + unknownEnumCase + ", nullptr},\n";
+
+    for (auto const & value : type.enumValues) {
+        generated += indent(valueIndentation) + "{" + type.name + "::" + screamingSnakeCaseToPascalCase(value.name) + ", \"" + value.name + "\"},\n";
+    }
+
+    generated += indent(indentation) + "});\n\n";
+
+    return generated;
+}
+
 std::string generateTypes(Schema const & schema) {
     std::string source;
 
-    for (auto const & type : schema.types) {
+    auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
+
+    size_t typeIndentation = 0;
+
+    for (auto const & type : sortedTypes) {
         switch (type.kind) {
-            case Schema::Type::Kind::Scalar:
-
-                break;
-
             case Schema::Type::Kind::Object:
 
                 break;
@@ -304,19 +487,17 @@ std::string generateTypes(Schema const & schema) {
                 break;
 
             case Schema::Type::Kind::Enum:
-
+                source += generateEnum(type, typeIndentation);
+                source += generateEnumSerialization(type, typeIndentation);
                 break;
 
             case Schema::Type::Kind::InputObject:
 
                 break;
 
+            case Schema::Type::Kind::Scalar:
             case Schema::Type::Kind::List:
-
-                break;
-
             case Schema::Type::Kind::NonNull:
-
                 break;
         }
     }
