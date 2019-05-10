@@ -10,22 +10,22 @@ struct BoxedOptional {
     BoxedOptional(T value): value{new T{value}} {}
 
     BoxedOptional(BoxedOptional const & optional) {
-        copy_value_from(optional);
+        copyValueFrom(optional);
     }
 
     BoxedOptional & operator = (BoxedOptional const & optional) {
         reset();
-        copy_value_from(optional);
+        copyValueFrom(optional);
         return *this;
     }
 
     BoxedOptional(BoxedOptional && optional) {
-        steal_value_from(optional);
+        stealValueFrom(optional);
     }
 
     BoxedOptional & operator = (BoxedOptional && optional) {
         reset();
-        steal_value_from(optional);
+        stealValueFrom(optional);
         return *this;
     }
 
@@ -67,13 +67,13 @@ struct BoxedOptional {
 private:
     T * value = nullptr;
 
-    void copy_value_from(BoxedOptional const & optional) {
+    void copyValueFrom(BoxedOptional const & optional) {
         if (optional.value) {
             value = new T{*optional.value};
         }
     }
 
-    void steal_value_from(BoxedOptional & optional) {
+    void stealValueFrom(BoxedOptional & optional) {
         if (optional.value) {
             value = optional.value;
             optional.value = nullptr;
