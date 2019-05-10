@@ -413,8 +413,7 @@ void appendDescription(std::string & string, std::string const & description, si
         string += indent(indentation) + "// " + description + "\n";
     } else {
         // Use block comments for multiline strings
-
-        string += indent(indentation) + "/* ";
+        string += indent(indentation) + "/*\n" + indent(indentation);
 
         for (auto const character : description) {
             if (character == '\n') {
@@ -425,7 +424,7 @@ void appendDescription(std::string & string, std::string const & description, si
             string += character;
         }
 
-        string += " */\n";
+        string += "\n" + indent(indentation) + "*/\n";
     }
 }
 
