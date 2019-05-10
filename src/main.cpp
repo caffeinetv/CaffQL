@@ -563,7 +563,7 @@ std::string generateInterface(Schema::Type const & type, size_t indentation) {
         generated += generateField(field, fieldIndentation);
     }
 
-    generated += "};\n\n";
+    generated += indent(indentation) + "};\n\n";
 
     return generated;
 }
@@ -579,7 +579,7 @@ std::string generateObject(Schema::Type const & type, size_t indentation) {
         generated += generateField(field, fieldIndentation);
     }
 
-    generated += "};\n\n";
+    generated += indent(indentation) + "};\n\n";
 
     return generated;
 }
@@ -595,12 +595,12 @@ std::string generateInputObject(Schema::Type const & type, size_t indentation) {
         generated += generateField(field, fieldIndentation);
     }
 
-    generated += "};\n\n";
+    generated += indent(indentation) + "};\n\n";
 
     return generated;
 }
 
-std::string generateTypes(Schema const & schema) {
+std::string generateTypes(Schema const & schema, std::string const & generatedNamespace) {
     auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
 
     std::string source;
@@ -614,7 +614,9 @@ R"(// This file was automatically generated and should not be edited.
 
 )";
 
-    size_t typeIndentation = 0;
+    source += "namespace " + generatedNamespace + " {\n\n";
+
+    size_t typeIndentation = 1;
 
     for (auto const & type : sortedTypes) {
         auto isSpecialType = [&](std::optional<Schema::SpecialType> const & special) {
@@ -658,12 +660,14 @@ R"(// This file was automatically generated and should not be edited.
         }
     }
 
+    source += "} // namespace " + generatedNamespace + "\n";
+
     return source;
 }
 
 int main(int argc, const char * argv[]) {
-    if (argc < 2) {
-        printf("Please provide an input schema\n");
+    if (argc < 3) {
+        printf("Please provide an input schema and namespace\n");
         return 0;
     }
 
@@ -671,7 +675,7 @@ int main(int argc, const char * argv[]) {
     auto const json = Json::parse(file);
     Schema schema = json.at("data").at("__schema");
 
-    auto const source = generateTypes(schema);
+    auto const source = generateTypes(schema, argv[2]);
     std::ofstream out{"Generated.hpp"};
     out << source;
     out.close();
