@@ -598,7 +598,14 @@ std::string generateTypes(Schema const & schema) {
 
     std::string source;
 
-    source += "// This file was automatically generated and should not be edited.\n\n";
+    source +=
+R"(// This file was automatically generated and should not be edited.
+
+#include <optional>
+#include <vector>
+#include "nlohmann/json.hpp"
+
+)";
 
     size_t typeIndentation = 0;
 
@@ -658,7 +665,7 @@ int main(int argc, const char * argv[]) {
     Schema schema = json.at("data").at("__schema");
 
     auto const source = generateTypes(schema);
-    std::ofstream out{"Generated.cpp"};
+    std::ofstream out{"Generated.hpp"};
     out << source;
     out.close();
 
