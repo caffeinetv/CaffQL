@@ -502,7 +502,7 @@ Schema::Type::Scalar scalarType(std::string const & name) {
     throw std::runtime_error{"Unknown scalar type: " + name};
 }
 
-std::string cppType(Schema::Type::Scalar scalar) {
+std::string scalarCppType(Schema::Type::Scalar scalar) {
     switch (scalar) {
         case Schema::Type::Scalar::Int:
             return "int32_t";
@@ -517,7 +517,11 @@ std::string cppType(Schema::Type::Scalar scalar) {
     }
 }
 
-std::string cppType(Schema::Type::TypeRef type) {
+std::string valueCppType(Schema::Type::TypeRef type, bool shouldCheckNullability = true) {
+    if (shouldCheckNullability && type.kind != Schema::Type::Kind::NonNull) {
+        return "std::optional<" + valueCppType(type, false) + ">";
+    }
+
     switch (type.kind) {
         case Schema::Type::Kind::Object:
         case Schema::Type::Kind::Interface:
@@ -527,13 +531,13 @@ std::string cppType(Schema::Type::TypeRef type) {
             return type.name.value();
 
         case Schema::Type::Kind::Scalar:
-            return cppType(scalarType(type.name.value()));
+            return scalarCppType(scalarType(type.name.value()));
 
         case Schema::Type::Kind::List:
-            return "std::vector<" + cppType(*type.ofType) + ">";
+            return "std::vector<" + valueCppType(*type.ofType, false) + ">";
 
         case Schema::Type::Kind::NonNull:
-            return "std::optional<" + cppType(*type.ofType) + ">";
+            return valueCppType(*type.ofType, false);
     }
 }
 
@@ -541,7 +545,7 @@ template <typename T>
 std::string generateField(T const & field, size_t indentation) {
     std::string generated;
     appendDescription(generated, field.description, indentation);
-    generated += indent(indentation) + cppType(field.type) + " " + field.name + ";\n";
+    generated += indent(indentation) + valueCppType(field.type) + " " + field.name + ";\n";
     return generated;
 }
 
