@@ -512,9 +512,9 @@ std::string scalarCppType(Schema::Type::Scalar scalar) {
         case Schema::Type::Scalar::Float:
             return "double";
         case Schema::Type::Scalar::String:
-        // TODO: Separate ID type?
-        case Schema::Type::Scalar::ID:
             return "std::string";
+        case Schema::Type::Scalar::ID:
+            return "ID";
         case Schema::Type::Scalar::Boolean:
             return "bool";
     }
@@ -617,6 +617,8 @@ R"(// This file was automatically generated and should not be edited.
     source += "namespace " + generatedNamespace + " {\n\n";
 
     size_t typeIndentation = 1;
+
+    source += indent(typeIndentation) + "using ID = std::string;\n\n";
 
     for (auto const & type : sortedTypes) {
         auto isSpecialType = [&](std::optional<Schema::SpecialType> const & special) {
