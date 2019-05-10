@@ -401,31 +401,35 @@ std::string indent(size_t indentation) {
     return std::string(indentation * spacesPerIndent, ' ');
 }
 
-void appendDescription(std::string & string, std::string const & description, size_t indentation) {
+std::string generateDescription(std::string const & description, size_t indentation) {
     if (description.empty()) {
-        return;
+        return {};
     }
 
+    std::string generated;
+
     // Insert a line break before comments
-    string += "\n";
+    generated += "\n";
 
     if (description.find('\n') == std::string::npos) {
-        string += indent(indentation) + "// " + description + "\n";
+        generated += indent(indentation) + "// " + description + "\n";
     } else {
         // Use block comments for multiline strings
-        string += indent(indentation) + "/*\n" + indent(indentation);
+        generated += indent(indentation) + "/*\n" + indent(indentation);
 
         for (auto const character : description) {
             if (character == '\n') {
-                string += "\n" + indent(indentation);
+                generated += "\n" + indent(indentation);
                 continue;
             }
 
-            string += character;
+            generated += character;
         }
 
-        string += "\n" + indent(indentation) + "*/\n";
+        generated += "\n" + indent(indentation) + "*/\n";
     }
+
+    return generated;
 }
 
 std::string screamingSnakeCaseToPascalCase(std::string const & snake) {
@@ -456,7 +460,7 @@ std::string generateEnum(Schema::Type const & type, size_t indentation) {
     auto const valueIndentation = indentation + 1;
 
     for (auto const & value : type.enumValues) {
-        appendDescription(generated, value.description, valueIndentation);
+        generated += generateDescription(value.description, valueIndentation);
         generated += indent(valueIndentation) + screamingSnakeCaseToPascalCase(value.name) + ",\n";
     }
 
@@ -543,7 +547,7 @@ std::string valueCppType(Schema::Type::TypeRef type, bool shouldCheckNullability
 template <typename T>
 std::string generateField(T const & field, size_t indentation) {
     std::string generated;
-    appendDescription(generated, field.description, indentation);
+    generated += generateDescription(field.description, indentation);
     generated += indent(indentation) + valueCppType(field.type) + " " + field.name + ";\n";
     return generated;
 }
