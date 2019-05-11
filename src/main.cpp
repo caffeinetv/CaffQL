@@ -156,12 +156,18 @@ struct Schema {
         std::string name;
     };
 
+    enum class Operation {
+        Query, Mutation, Subscription
+    };
+
     std::optional<SpecialType> queryType;
     std::optional<SpecialType> mutationType;
     std::optional<SpecialType> subscriptionType;
     std::vector<Type> types;
     // TODO: Directives
 };
+
+using TypeMap = std::unordered_map<std::string, Schema::Type>;
 
 namespace nlohmann {
     template <typename T>
@@ -453,6 +459,16 @@ std::string screamingSnakeCaseToPascalCase(std::string const & snake) {
     return pascal;
 }
 
+std::string capitalize(std::string string) {
+    string.at(0) = toupper(string.at(0));
+    return string;
+}
+
+std::string uncapitalize(std::string string) {
+    string.at(0) = tolower(string.at(0));
+    return string;
+}
+
 std::string generateEnum(Schema::Type const & type, size_t indentation) {
     std::string generated;
     generated += indent(indentation) + "enum class " + type.name + " {\n";
@@ -581,9 +597,7 @@ std::string generateInterface(Schema::Type const & type, size_t indentation) {
     return generated;
 }
 
-using InterfaceFields = std::unordered_map<std::string, std::vector<Schema::Type::Field>>;
-
-std::string generateObject(Schema::Type const & type, size_t indentation, InterfaceFields const & interfaceFields) {
+std::string generateObject(Schema::Type const & type, TypeMap const & typeMap, size_t indentation) {
     std::string generated;
 
     generated += indent(indentation) + "struct " + type.name;
@@ -611,7 +625,7 @@ std::string generateObject(Schema::Type const & type, size_t indentation, Interf
         std::unordered_set<std::string> implementedFields;
 
         for (auto const & interface : type.interfaces) {
-            for (auto const & field : interfaceFields.at(interface.name.value())) {
+            for (auto const & field : typeMap.at(interface.name.value()).fields) {
                 if (implementedFields.find(field.name) == implementedFields.end()) {
                     implementedFields.insert(field.name);
                     generated += "\n" + generateFieldAccessor(field, fieldIndentation) + " override {\n"
@@ -643,15 +657,24 @@ std::string generateInputObject(Schema::Type const & type, size_t indentation) {
     return generated;
 }
 
+std::string operationQueryName(Schema::Operation operation) {
+    switch (operation) {
+        case Schema::Operation::Query:
+            return "query";
+        case Schema::Operation::Mutation:
+            return "mutation";
+        case Schema::Operation::Subscription:
+            return "subscription";
+    }
+}
+
 std::string generateTypes(Schema const & schema, std::string const & generatedNamespace) {
     auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
 
-    InterfaceFields interfaceFields;
+    TypeMap typeMap;
 
     for (auto const & type : schema.types) {
-        if (type.kind == Schema::Type::Kind::Interface) {
-            interfaceFields[type.name] = type.fields;
-        }
+        typeMap[type.name] = type;
     }
 
     std::string source;
@@ -686,7 +709,7 @@ R"(// This file was automatically generated and should not be edited.
                 } else if (isSpecialType(schema.subscriptionType)) {
 
                 } else {
-                    source += generateObject(type, typeIndentation, interfaceFields);
+                    source += generateObject(type, typeMap, typeIndentation);
                 }
                 break;
 
