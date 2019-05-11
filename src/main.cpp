@@ -521,7 +521,7 @@ Schema::Type::Scalar scalarType(std::string const & name) {
     throw std::runtime_error{"Unknown scalar type: " + name};
 }
 
-std::string scalarCppType(Schema::Type::Scalar scalar) {
+std::string cppScalarName(Schema::Type::Scalar scalar) {
     switch (scalar) {
         case Schema::Type::Scalar::Int:
             return "int32_t";
@@ -536,9 +536,9 @@ std::string scalarCppType(Schema::Type::Scalar scalar) {
     }
 }
 
-std::string valueCppType(Schema::Type::TypeRef type, bool shouldCheckNullability = true) {
+std::string cppTypeName(Schema::Type::TypeRef type, bool shouldCheckNullability = true) {
     if (shouldCheckNullability && type.kind != Schema::Type::Kind::NonNull) {
-        return "std::optional<" + valueCppType(type, false) + ">";
+        return "std::optional<" + cppTypeName(type, false) + ">";
     }
 
     switch (type.kind) {
@@ -552,13 +552,31 @@ std::string valueCppType(Schema::Type::TypeRef type, bool shouldCheckNullability
             return "std::unique_ptr<" + type.name.value() + ">";
 
         case Schema::Type::Kind::Scalar:
-            return scalarCppType(scalarType(type.name.value()));
+            return cppScalarName(scalarType(type.name.value()));
 
         case Schema::Type::Kind::List:
-            return "std::vector<" + valueCppType(*type.ofType, false) + ">";
+            return "std::vector<" + cppTypeName(*type.ofType, false) + ">";
 
         case Schema::Type::Kind::NonNull:
-            return valueCppType(*type.ofType, false);
+            return cppTypeName(*type.ofType, false);
+    }
+}
+
+std::string graphQLTypeName(Schema::Type::TypeRef type) {
+    switch (type.kind) {
+        case Schema::Type::Kind::Scalar:
+        case Schema::Type::Kind::Object:
+        case Schema::Type::Kind::Union:
+        case Schema::Type::Kind::Interface:
+        case Schema::Type::Kind::Enum:
+        case Schema::Type::Kind::InputObject:
+            return type.name.value();
+
+        case Schema::Type::Kind::List:
+            return "[" + graphQLTypeName(*type.ofType) + "]";
+
+        case Schema::Type::Kind::NonNull:
+            return graphQLTypeName(*type.ofType) + "!";
     }
 }
 
@@ -566,14 +584,12 @@ template <typename T>
 std::string generateField(T const & field, size_t indentation) {
     std::string generated;
     generated += generateDescription(field.description, indentation);
-    generated += indent(indentation) + valueCppType(field.type) + " " + field.name + ";\n";
+    generated += indent(indentation) + cppTypeName(field.type) + " " + field.name + ";\n";
     return generated;
 }
 
 std::string generateFieldAccessor(Schema::Type::Field const & field, size_t indentation) {
-    auto name = field.name;
-    name[0] = toupper(name[0]);
-    return indent(indentation) + "virtual " + valueCppType(field.type) + " const & get" + name + "() const";
+    return indent(indentation) + "virtual " + cppTypeName(field.type) + " const & get" + capitalize(field.name) + "() const";
 }
 
 std::string generateInterface(Schema::Type const & type, size_t indentation) {
