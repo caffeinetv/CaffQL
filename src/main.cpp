@@ -363,8 +363,8 @@ std::vector<Schema::Type> sortCustomTypesByDependencyOrder(std::vector<Schema::T
             addDependency(field.type.underlyingType());
         }
 
-        for (auto const & interface : type.interfaces) {
-            addDependency(interface);
+        for (auto const & possibleType : type.possibleTypes) {
+            addDependency(possibleType);
         }
 
         typesToDependencies[type.name] = {type, move(dependencies)};
@@ -543,13 +543,11 @@ std::string cppTypeName(Schema::Type::TypeRef type, bool shouldCheckNullability 
 
     switch (type.kind) {
         case Schema::Type::Kind::Object:
+        case Schema::Type::Kind::Interface:
         case Schema::Type::Kind::Union:
         case Schema::Type::Kind::Enum:
         case Schema::Type::Kind::InputObject:
             return type.name.value();
-
-        case Schema::Type::Kind::Interface:
-            return "std::unique_ptr<" + type.name.value() + ">";
 
         case Schema::Type::Kind::Scalar:
             return cppScalarName(scalarType(type.name.value()));
@@ -588,10 +586,6 @@ std::string generateField(T const & field, size_t indentation) {
     return generated;
 }
 
-std::string generateFieldAccessor(Schema::Type::Field const & field, size_t indentation) {
-    return indent(indentation) + "virtual " + cppTypeName(field.type) + " const & get" + capitalize(field.name) + "() const";
-}
-
 std::string generateInterface(Schema::Type const & type, size_t indentation) {
     std::string generated;
 
@@ -599,11 +593,24 @@ std::string generateInterface(Schema::Type const & type, size_t indentation) {
 
     auto const fieldIndentation = indentation + 1;
 
-    generated += indent(fieldIndentation) + "virtual ~" + type.name + "() {}\n";
+    generated += indent(fieldIndentation) + "std::variant<";
+    for (auto it = type.possibleTypes.begin(); it != type.possibleTypes.end(); ++it) {
+        generated += it->name.value();
+        if (it != type.possibleTypes.end() - 1) {
+            generated += ", ";
+        }
+    }
+    generated += "> implementation;\n\n";
 
     for (auto const & field : type.fields) {
+        auto const typeNameConstRef = cppTypeName(field.type) + " const & ";
         generated += generateDescription(field.description, fieldIndentation);
-        generated += generateFieldAccessor(field, fieldIndentation) + " = 0;\n";
+        generated += indent(fieldIndentation) + typeNameConstRef + field.name + "() const {\n";
+        generated += indent(fieldIndentation + 1) + "return std::visit([](auto const & implementation) -> "
+        + typeNameConstRef + "{\n";
+        generated += indent(fieldIndentation + 2) + "return implementation." + field.name + ";\n";
+        generated += indent(fieldIndentation + 1) + "}, implementation);\n";
+        generated += indent(fieldIndentation) + "}\n\n";
     }
 
     generated += indent(indentation) + "};\n\n";
@@ -616,40 +623,12 @@ std::string generateInterface(Schema::Type const & type, size_t indentation) {
 std::string generateObject(Schema::Type const & type, TypeMap const & typeMap, size_t indentation) {
     std::string generated;
 
-    generated += indent(indentation) + "struct " + type.name;
-
-    if (!type.interfaces.empty()) {
-        generated += ": ";
-
-        for (auto it = type.interfaces.begin(); it != type.interfaces.end(); ++it) {
-            generated += it->name.value();
-            if (it != type.interfaces.end() - 1) {
-                generated += ", ";
-            }
-        }
-    }
-
-    generated += " {\n";
+    generated += indent(indentation) + "struct " + type.name + " {\n";
 
     auto const fieldIndentation = indentation + 1;
 
     for (auto const & field : type.fields) {
         generated += generateField(field, fieldIndentation);
-    }
-
-    if (!type.interfaces.empty()) {
-        std::unordered_set<std::string> implementedFields;
-
-        for (auto const & interface : type.interfaces) {
-            for (auto const & field : typeMap.at(interface.name.value()).fields) {
-                if (implementedFields.find(field.name) == implementedFields.end()) {
-                    implementedFields.insert(field.name);
-                    generated += "\n" + generateFieldAccessor(field, fieldIndentation) + " override {\n"
-                    + indent(fieldIndentation + 1) + "return " + field.name + ";\n"
-                    + indent(fieldIndentation) + "}\n";
-                }
-            }
-        }
     }
 
     generated += indent(indentation) + "};\n\n";
@@ -700,6 +679,7 @@ R"(// This file was automatically generated and should not be edited.
 
 #include <memory>
 #include <optional>
+#include <variant>
 #include <vector>
 #include "nlohmann/json.hpp"
 
