@@ -152,7 +152,7 @@ struct Schema {
         std::vector<TypeRef> possibleTypes;
     };
 
-    struct SpecialType {
+    struct OperationType {
         std::string name;
     };
 
@@ -160,9 +160,9 @@ struct Schema {
         Query, Mutation, Subscription
     };
 
-    std::optional<SpecialType> queryType;
-    std::optional<SpecialType> mutationType;
-    std::optional<SpecialType> subscriptionType;
+    std::optional<OperationType> queryType;
+    std::optional<OperationType> mutationType;
+    std::optional<OperationType> subscriptionType;
     std::vector<Type> types;
     // TODO: Directives
 };
@@ -299,8 +299,8 @@ void from_json(Json const & json, Schema::Type & type) {
     get_value_to(json, "possibleTypes", type.possibleTypes);
 }
 
-void from_json(Json const & json, Schema::SpecialType & special) {
-    get_value_to(json, "name", special.name);
+void from_json(Json const & json, Schema::OperationType & operationType) {
+    get_value_to(json, "name", operationType.name);
 }
 
 void from_json(Json const & json, Schema & schema) {
@@ -402,6 +402,9 @@ std::vector<Schema::Type> sortCustomTypesByDependencyOrder(std::vector<Schema::T
 
 constexpr size_t spacesPerIndent = 4;
 const std::string unknownCaseName = "Unknown";
+const std::string cppJsonTypeName = "Json";
+const std::string cppIdTypeName = "Id";
+const std::string grapqlErrorTypeName = "GraphqlError";
 
 std::string indent(size_t indentation) {
     return std::string(indentation * spacesPerIndent, ' ');
@@ -530,7 +533,7 @@ std::string cppScalarName(Schema::Type::Scalar scalar) {
         case Schema::Type::Scalar::String:
             return "std::string";
         case Schema::Type::Scalar::ID:
-            return "ID";
+            return cppIdTypeName;
         case Schema::Type::Scalar::Boolean:
             return "bool";
     }
@@ -560,7 +563,7 @@ std::string cppTypeName(Schema::Type::TypeRef const & type, bool shouldCheckNull
     }
 }
 
-std::string graphQLTypeName(Schema::Type::TypeRef const & type) {
+std::string graphqlTypeName(Schema::Type::TypeRef const & type) {
     switch (type.kind) {
         case Schema::Type::Kind::Scalar:
         case Schema::Type::Kind::Object:
@@ -571,10 +574,10 @@ std::string graphQLTypeName(Schema::Type::TypeRef const & type) {
             return type.name.value();
 
         case Schema::Type::Kind::List:
-            return "[" + graphQLTypeName(*type.ofType) + "]";
+            return "[" + graphqlTypeName(*type.ofType) + "]";
 
         case Schema::Type::Kind::NonNull:
-            return graphQLTypeName(*type.ofType) + "!";
+            return graphqlTypeName(*type.ofType) + "!";
     }
 }
 
@@ -678,6 +681,185 @@ std::string operationQueryName(Schema::Operation operation) {
     }
 }
 
+struct QueryVariable {
+    std::string name;
+    Schema::Type::TypeRef type;
+};
+
+std::string appendNameToVariablePrefix(std::string const & variablePrefix, std::string const & name) {
+    return variablePrefix.empty() ? name : variablePrefix + capitalize(name);
+}
+
+std::string generateQueryFields(Schema::Type const & type, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation);
+
+std::string generateQueryField(Schema::Type::Field const & field, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + field.name;
+
+    if (!field.args.empty()) {
+        generated += "(\n";
+        for (auto const & arg : field.args) {
+            auto name = appendNameToVariablePrefix(variablePrefix, arg.name);
+            generated += indent(indentation + 1) + name + ": $" + name + "\n";
+            variables.push_back({name, arg.type});
+        }
+        generated += indent(indentation) + ")";
+    }
+
+    auto const & underlyingFieldType = field.type.underlyingType();
+    if (underlyingFieldType.kind != Schema::Type::Kind::Scalar && underlyingFieldType.kind != Schema::Type::Kind::Enum) {
+        generated += " {\n";
+        generated += generateQueryFields(typeMap.at(underlyingFieldType.name.value()), typeMap, appendNameToVariablePrefix(variablePrefix, underlyingFieldType.name.value()), variables, indentation + 1);
+        generated += indent(indentation) + "}";
+    }
+
+    generated += "\n";
+
+    return generated;
+}
+
+std::string generateQueryFields(Schema::Type const & type, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation) {
+    std::string generated;
+
+    if (!type.possibleTypes.empty()) {
+        generated += indent(indentation) + "__typename\n";
+
+        for (auto const & possibleType : type.possibleTypes) {
+            generated += indent(indentation) + "...on " + possibleType.name.value() + " {\n";
+            generated += generateQueryFields(typeMap.at(possibleType.name.value()), typeMap, appendNameToVariablePrefix(variablePrefix, possibleType.name.value()), variables, indentation + 1);
+            generated += indent(indentation) + "}\n";
+        }
+    } else {
+        for (auto const & field : type.fields) {
+            generated += generateQueryField(field, typeMap, appendNameToVariablePrefix(variablePrefix, field.name), variables, indentation);
+        }
+    }
+
+    return generated;
+}
+
+struct QueryDocument {
+    std::string query;
+    std::vector<QueryVariable> variables;
+};
+
+QueryDocument generateQueryDocument(Schema::Type::Field const & field, Schema::Operation operation, TypeMap const & typeMap, size_t indentation) {
+    QueryDocument document;
+    auto & query = document.query;
+    auto & variables = document.variables;
+
+    auto selectionSet = generateQueryField(field, typeMap, "", variables, indentation + 1);
+
+    query += indent(indentation) + operationQueryName(operation) + " " + capitalize(field.name) + "(\n";
+
+    for (auto const & variable : variables) {
+        query += indent(indentation + 1) + "$" + variable.name + ": " + graphqlTypeName(variable.type) + "\n";
+    }
+
+    query += indent(indentation) + ") {\n";
+    query += selectionSet;
+    query += indent(indentation) + "}\n";
+
+    return document;
+}
+
+std::string generateOperationRequestFunction(Schema::Type::Field const & field, Schema::Operation operation, TypeMap const & typeMap, size_t indentation) {
+    auto const functionIndentation = indentation + 1;
+    auto const queryIndentation = functionIndentation + 1;
+
+    auto const document = generateQueryDocument(field, operation, typeMap, queryIndentation);
+
+    std::string generated;
+    generated += indent(indentation) + "static " + cppJsonTypeName + " request(";
+
+    for (auto it = document.variables.begin(); it != document.variables.end(); ++it) {
+        generated += cppTypeName(it->type) + " " + it->name;
+
+        if (it != document.variables.end() - 1) {
+            generated += ", ";
+        }
+    }
+
+    generated += ") {\n";
+
+    // Use raw string literal for the query.
+    generated += indent(functionIndentation) + "Json query = R\"(\n" + document.query + indent(functionIndentation) + ")\";\n";
+    generated += indent(functionIndentation) + "Json variables;\n";
+
+    for (auto const & variable : document.variables) {
+        if (variable.type.kind == Schema::Type::Kind::NonNull) {
+            generated += indent(functionIndentation) + "variables[\"" + variable.name + "\"] = " + variable.name + ";\n";
+        } else {
+            // For optionals, check if present before adding to json.
+            // TODO: Use an optional overload for json.
+
+            // Make sure there is an empty line before the if statement
+            if (generated.size() < 2 || generated.substr(generated.size() - 2, 2) != "\n\n") {
+                generated += "\n";
+            }
+
+            generated += indent(functionIndentation) + "if (" + variable.name + ") {\n";
+            generated += indent(functionIndentation + 1) + "variables[\"" + variable.name + "\"] = *" + variable.name + ";\n";
+            generated += indent(functionIndentation) + "}\n\n";
+        }
+    }
+
+    generated += indent(functionIndentation) + "return {{\"query\", std::move(query)}, {\"variables\", std::move(variables)}};\n";
+
+    generated += indent(indentation) + "}\n\n";
+
+    return generated;
+}
+
+std::string cppGraphqlResponse() {
+    // TODO
+}
+
+std::string generateOperationResponseFunction(Schema::Type::Field const & field, TypeMap const & typeMap, size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + "static ";
+
+    return generated;
+}
+
+std::string generateOperationType(Schema::Type::Field const & field, Schema::Operation operation, TypeMap const & typeMap, size_t indentation) {
+    auto const document = generateQueryDocument(field, operation, typeMap, 0);
+
+    std::string generated;
+
+    generated += indent(indentation) + "struct " + capitalize(field.name) + " {\n\n";
+
+    generated += generateOperationRequestFunction(field, operation, typeMap, indentation + 1);
+
+    generated += indent(indentation) + "};\n\n";
+
+    return generated;
+}
+
+std::string generateOperationTypes(Schema::Type const & type, Schema::Operation operation, TypeMap const & typeMap, size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + "namespace " + type.name + " {\n\n";
+
+    for (auto const & field : type.fields) {
+        generated += generateOperationType(field, operation, typeMap, indentation + 1);
+    }
+
+    generated += indent(indentation) + "}; // namespace " + type.name + " \n\n";
+
+    return generated;
+}
+
+std::string generateGraphqlErrorType(size_t indentation) {
+    std::string generated;
+    //generated += indent(indentation) + "struct " + grapqlErrorTypeName + " {\n";
+
+
+    return generated;
+}
+
 std::string generateTypes(Schema const & schema, std::string const & generatedNamespace) {
     auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
 
@@ -704,21 +886,24 @@ R"(// This file was automatically generated and should not be edited.
 
     size_t typeIndentation = 1;
 
-    source += indent(typeIndentation) + "using ID = std::string;\n\n";
+    source += indent(typeIndentation) + "using " + cppJsonTypeName + " = nlohmann::json;\n";
+    source += indent(typeIndentation) + "using " + cppIdTypeName + " = std::string;\n\n";
+
+    source += generateGraphqlErrorType(typeIndentation);
 
     for (auto const & type : sortedTypes) {
-        auto isSpecialType = [&](std::optional<Schema::SpecialType> const & special) {
+        auto isOperationType = [&](std::optional<Schema::OperationType> const & special) {
             return special && special->name == type.name;
         };
 
         switch (type.kind) {
             case Schema::Type::Kind::Object:
-                if (isSpecialType(schema.queryType)) {
-
-                } else if (isSpecialType(schema.mutationType)) {
-
-                } else if (isSpecialType(schema.subscriptionType)) {
-
+                if (isOperationType(schema.queryType)) {
+                    source += generateOperationTypes(type, Schema::Operation::Query, typeMap, typeIndentation);
+                } else if (isOperationType(schema.mutationType)) {
+                    source += generateOperationTypes(type, Schema::Operation::Mutation, typeMap, typeIndentation);
+                } else if (isOperationType(schema.subscriptionType)) {
+                    source += generateOperationTypes(type, Schema::Operation::Subscription, typeMap, typeIndentation);
                 } else {
                     source += generateObject(type, typeMap, typeIndentation);
                 }
