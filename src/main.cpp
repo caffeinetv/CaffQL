@@ -586,6 +586,18 @@ std::string generateField(T const & field, size_t indentation) {
     return generated;
 }
 
+std::string cppVariant(std::vector<Schema::Type::TypeRef> const & possibleTypes) {
+    std::string generated = "std::variant<";
+    for (auto it = possibleTypes.begin(); it != possibleTypes.end(); ++it) {
+        generated += it->name.value();
+        if (it != possibleTypes.end() - 1) {
+            generated += ", ";
+        }
+    }
+    generated += ">";
+    return generated;
+}
+
 std::string generateInterface(Schema::Type const & type, size_t indentation) {
     std::string generated;
 
@@ -593,14 +605,7 @@ std::string generateInterface(Schema::Type const & type, size_t indentation) {
 
     auto const fieldIndentation = indentation + 1;
 
-    generated += indent(fieldIndentation) + "std::variant<";
-    for (auto it = type.possibleTypes.begin(); it != type.possibleTypes.end(); ++it) {
-        generated += it->name.value();
-        if (it != type.possibleTypes.end() - 1) {
-            generated += ", ";
-        }
-    }
-    generated += "> implementation;\n\n";
+    generated += indent(fieldIndentation) + cppVariant(type.possibleTypes) + " implementation;\n\n";
 
     for (auto const & field : type.fields) {
         auto const typeNameConstRef = cppTypeName(field.type) + " const & ";
@@ -618,6 +623,11 @@ std::string generateInterface(Schema::Type const & type, size_t indentation) {
     // TODO: Generate fallback interface implementation for unknown types
 
     return generated;
+}
+
+std::string generateUnion(Schema::Type const & type, size_t indentation) {
+    // TODO: Add monostate case for unknown types
+    return indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes) + ";\n\n";
 }
 
 std::string generateObject(Schema::Type const & type, TypeMap const & typeMap, size_t indentation) {
@@ -714,7 +724,7 @@ R"(// This file was automatically generated and should not be edited.
                 break;
 
             case Schema::Type::Kind::Union:
-                // TODO: Union support
+                source += generateUnion(type, typeIndentation);
                 break;
 
             case Schema::Type::Kind::Enum:
