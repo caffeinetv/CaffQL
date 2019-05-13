@@ -401,7 +401,7 @@ std::vector<Schema::Type> sortCustomTypesByDependencyOrder(std::vector<Schema::T
 }
 
 constexpr size_t spacesPerIndent = 4;
-const std::string unknownEnumCase = "Unknown";
+const std::string unknownCaseName = "Unknown";
 
 std::string indent(size_t indentation) {
     return std::string(indentation * spacesPerIndent, ' ');
@@ -480,7 +480,7 @@ std::string generateEnum(Schema::Type const & type, size_t indentation) {
         generated += indent(valueIndentation) + screamingSnakeCaseToPascalCase(value.name) + ",\n";
     }
 
-    generated += indent(valueIndentation) + unknownEnumCase + " = -1\n";
+    generated += indent(valueIndentation) + unknownCaseName + " = -1\n";
 
     generated += indent(indentation) + "};\n\n";
 
@@ -494,7 +494,7 @@ std::string generateEnumSerialization(Schema::Type const & type, size_t indentat
 
     auto const valueIndentation = indentation + 1;
 
-    generated += indent(valueIndentation) + "{" + type.name + "::" + unknownEnumCase + ", nullptr},\n";
+    generated += indent(valueIndentation) + "{" + type.name + "::" + unknownCaseName + ", nullptr},\n";
 
     for (auto const & value : type.enumValues) {
         generated += indent(valueIndentation) + "{" + type.name + "::" + screamingSnakeCaseToPascalCase(value.name) + ", \"" + value.name + "\"},\n";
@@ -536,7 +536,7 @@ std::string cppScalarName(Schema::Type::Scalar scalar) {
     }
 }
 
-std::string cppTypeName(Schema::Type::TypeRef type, bool shouldCheckNullability = true) {
+std::string cppTypeName(Schema::Type::TypeRef const & type, bool shouldCheckNullability = true) {
     if (shouldCheckNullability && type.kind != Schema::Type::Kind::NonNull) {
         return "std::optional<" + cppTypeName(type, false) + ">";
     }
@@ -560,7 +560,7 @@ std::string cppTypeName(Schema::Type::TypeRef type, bool shouldCheckNullability 
     }
 }
 
-std::string graphQLTypeName(Schema::Type::TypeRef type) {
+std::string graphQLTypeName(Schema::Type::TypeRef const & type) {
     switch (type.kind) {
         case Schema::Type::Kind::Scalar:
         case Schema::Type::Kind::Object:
@@ -586,48 +586,53 @@ std::string generateField(T const & field, size_t indentation) {
     return generated;
 }
 
-std::string cppVariant(std::vector<Schema::Type::TypeRef> const & possibleTypes) {
+std::string cppVariant(std::vector<Schema::Type::TypeRef> const & possibleTypes, std::string const & unknownTypeName) {
     std::string generated = "std::variant<";
-    for (auto it = possibleTypes.begin(); it != possibleTypes.end(); ++it) {
-        generated += it->name.value();
-        if (it != possibleTypes.end() - 1) {
-            generated += ", ";
-        }
+    for (auto const & type : possibleTypes) {
+        generated += type.name.value() + ", ";
     }
-    generated += ">";
+    generated += unknownTypeName + ">";
     return generated;
 }
 
 std::string generateInterface(Schema::Type const & type, size_t indentation) {
-    std::string generated;
+    std::string interface;
+    std::string unknownImplementation;
 
-    generated += indent(indentation) + "struct " + type.name + " {\n";
+    interface += indent(indentation) + "struct " + type.name + " {\n";
+    auto const unknownTypeName = unknownCaseName + type.name;
+    unknownImplementation += indent(indentation) + "struct " + unknownTypeName + " {\n";
 
     auto const fieldIndentation = indentation + 1;
 
-    generated += indent(fieldIndentation) + cppVariant(type.possibleTypes) + " implementation;\n\n";
+    interface += indent(fieldIndentation) + cppVariant(type.possibleTypes, unknownTypeName) + " implementation;\n\n";
 
     for (auto const & field : type.fields) {
-        auto const typeNameConstRef = cppTypeName(field.type) + " const & ";
-        generated += generateDescription(field.description, fieldIndentation);
-        generated += indent(fieldIndentation) + typeNameConstRef + field.name + "() const {\n";
-        generated += indent(fieldIndentation + 1) + "return std::visit([](auto const & implementation) -> "
+        auto const typeName = cppTypeName(field.type);
+        unknownImplementation += indent(fieldIndentation) + typeName + " " + field.name + ";\n";
+
+        auto const typeNameConstRef = typeName + " const & ";
+        interface += generateDescription(field.description, fieldIndentation);
+        interface += indent(fieldIndentation) + typeNameConstRef + field.name + "() const {\n";
+        interface += indent(fieldIndentation + 1) + "return std::visit([](auto const & implementation) -> "
         + typeNameConstRef + "{\n";
-        generated += indent(fieldIndentation + 2) + "return implementation." + field.name + ";\n";
-        generated += indent(fieldIndentation + 1) + "}, implementation);\n";
-        generated += indent(fieldIndentation) + "}\n\n";
+        interface += indent(fieldIndentation + 2) + "return implementation." + field.name + ";\n";
+        interface += indent(fieldIndentation + 1) + "}, implementation);\n";
+        interface += indent(fieldIndentation) + "}\n\n";
     }
 
-    generated += indent(indentation) + "};\n\n";
+    interface += indent(indentation) + "};\n\n";
+    unknownImplementation += indent(indentation) + "};\n\n";
 
-    // TODO: Generate fallback interface implementation for unknown types
-
-    return generated;
+    return unknownImplementation + interface;
 }
 
 std::string generateUnion(Schema::Type const & type, size_t indentation) {
-    // TODO: Add monostate case for unknown types
-    return indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes) + ";\n\n";
+    std::string generated;
+
+    auto const unknownTypeName = unknownCaseName + type.name;
+    generated += "using " + unknownTypeName + " = std::monostate;\n\n";
+    return indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) + ";\n\n";
 }
 
 std::string generateObject(Schema::Type const & type, TypeMap const & typeMap, size_t indentation) {
