@@ -829,6 +829,7 @@ std::string generateTypes(Schema const & schema, std::string const & generatedNa
 
     source +=
 R"(// This file was automatically generated and should not be edited.
+#pragma once
 
 #include <memory>
 #include <optional>
