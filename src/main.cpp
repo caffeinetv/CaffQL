@@ -601,6 +601,47 @@ std::string generateDeserializationFunctionDeclaration(std::string const & typeN
     return indent(indentation) + "inline void from_json(" + cppJsonTypeName + " const & json, " + typeName + " & value) {\n";
 }
 
+std::string generateFieldDeserialization(Field const & field, size_t indentation) {
+    if (field.type.kind == TypeKind::NonNull) {
+        return indent(indentation) + "json.at(\"" + field.name + "\").get_to(value." + field.name + ");\n";
+    }
+
+    std::string generated;
+    generated += indent(indentation) + "{\n";
+    generated += indent(indentation + 1) + "auto it = json.find(\"" + field.name + "\");\n";
+    generated += indent(indentation + 1) + "if (it != json.end()) {\n";
+    generated += indent(indentation + 2) + "it->get_to(value." + field.name + ");\n";
+    generated += indent(indentation + 1) + "} else {\n";
+    generated += indent(indentation + 2) + "value." + field.name + ".reset();\n";
+    generated += indent(indentation + 1) + "}\n";
+    generated += indent(indentation) + "}\n";
+
+    return generated;
+}
+
+std::string generateVariantDeserialization(Type const & type, std::string const & constructUnknown, size_t indentation) {
+    std::string generated;
+
+    generated += generateDeserializationFunctionDeclaration(type.name, indentation);
+
+    generated += indent(indentation + 1) + "std::string occupiedType = json.at(\"__typename\");\n";
+    generated += indent(indentation + 1);
+
+    for (auto const & possibleType : type.possibleTypes) {
+        generated += "if (occupiedType == \"" + possibleType.name.value() + "\") {\n";
+        generated += indent(indentation + 2) + "value = {" + possibleType.name.value() + "(json)};\n";
+        generated += indent(indentation + 1) + "} else ";
+    }
+
+    generated += "{\n";
+    generated += indent(indentation + 2) + "value = {" + constructUnknown + "};\n";
+    generated += indent(indentation + 1) + "}\n";
+
+    generated += indent(indentation) + "}\n\n";
+
+    return generated;
+}
+
 std::string generateInterface(Type const & type, size_t indentation) {
     std::string interface;
     std::string unknownImplementation;
@@ -633,6 +674,27 @@ std::string generateInterface(Type const & type, size_t indentation) {
     return unknownImplementation + interface;
 }
 
+std::string generateInterfaceUnknownCaseDeserialization(Type const & type, size_t indentation) {
+    std::string generated;
+
+    auto const unknownTypeName = unknownCaseName + type.name;
+
+    generated += generateDeserializationFunctionDeclaration(unknownTypeName, indentation);
+
+    for (auto const & field : type.fields) {
+        generated += generateFieldDeserialization(field, indentation + 1);
+    }
+
+    generated += indent(indentation) + "}\n\n";
+
+    return generated;
+}
+
+std::string generateInterfaceDeserialization(Type const & type, size_t indentation) {
+    return generateInterfaceUnknownCaseDeserialization(type, indentation)
+        + generateVariantDeserialization(type, unknownCaseName + type.name + "(json)", indentation);
+}
+
 std::string generateUnion(Type const & type, size_t indentation) {
     std::string generated;
 
@@ -640,6 +702,10 @@ std::string generateUnion(Type const & type, size_t indentation) {
     generated += "using " + unknownTypeName + " = std::monostate;\n\n";
     generated += indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) + ";\n\n";
     return generated;
+}
+
+std::string generateUnionDeserialization(Type const & type, size_t indentation) {
+    return generateVariantDeserialization(type, unknownCaseName + type.name + "()", indentation);
 }
 
 std::string generateObject(Type const & type, TypeMap const & typeMap, size_t indentation) {
@@ -654,24 +720,6 @@ std::string generateObject(Type const & type, TypeMap const & typeMap, size_t in
     }
 
     generated += indent(indentation) + "};\n\n";
-
-    return generated;
-}
-
-std::string generateFieldDeserialization(Field const & field, size_t indentation) {
-    if (field.type.kind == TypeKind::NonNull) {
-        return indent(indentation) + "json.at(\"" + field.name + "\").get_to(value." + field.name + ");\n";
-    }
-
-    std::string generated;
-    generated += indent(indentation) + "{\n";
-    generated += indent(indentation + 1) + "auto it = json.find(\"" + field.name + "\");\n";
-    generated += indent(indentation + 1) + "if (it != json.end()) {\n";
-    generated += indent(indentation + 2) + "it->get_to(value." + field.name + ");\n";
-    generated += indent(indentation + 1) + "} else {\n";
-    generated += indent(indentation + 2) + "value." + field.name + ".reset();\n";
-    generated += indent(indentation + 1) + "}\n";
-    generated += indent(indentation) + "}\n";
 
     return generated;
 }
@@ -995,10 +1043,12 @@ namespace nlohmann {
 
             case TypeKind::Interface:
                 source += generateInterface(type, typeIndentation);
+                source += generateInterfaceDeserialization(type, typeIndentation);
                 break;
 
             case TypeKind::Union:
                 source += generateUnion(type, typeIndentation);
+                source += generateUnionDeserialization(type, typeIndentation);
                 break;
 
             case TypeKind::Enum:
