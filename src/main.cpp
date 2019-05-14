@@ -938,7 +938,7 @@ std::string generateOperationType(Field const & field, Operation operation, Type
     std::string generated;
 
     generated += generateDescription(field.description, indentation);
-    generated += indent(indentation) + "struct " + capitalize(field.name) + " {\n\n";
+    generated += indent(indentation) + "struct " + capitalize(field.name) + "Field" + " {\n\n";
 
     generated += generateOperationRequestFunction(field, operation, typeMap, indentation + 1);
     generated += generateOperationResponseFunction(field, indentation + 1);
