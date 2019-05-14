@@ -222,12 +222,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(TypeKind, {
 });
 
 template <typename T>
-inline void get_value_to(Json const & json, char const * key, T & target) {
+void get_value_to(Json const & json, char const * key, T & target) {
     json.at(key).get_to(target);
 }
 
 template <typename T>
-inline void get_value_to(Json const & json, char const * key, std::optional<T> & target) {
+void get_value_to(Json const & json, char const * key, std::optional<T> & target) {
     auto it = json.find(key);
     if (it != json.end()) {
         it->get_to(target);
@@ -237,7 +237,7 @@ inline void get_value_to(Json const & json, char const * key, std::optional<T> &
 }
 
 template <typename T>
-inline void get_value_to(Json const & json, char const * key, BoxedOptional<T> & target) {
+void get_value_to(Json const & json, char const * key, BoxedOptional<T> & target) {
     auto it = json.find(key);
     if (it != json.end()) {
         it->get_to(target);
@@ -247,12 +247,12 @@ inline void get_value_to(Json const & json, char const * key, BoxedOptional<T> &
 }
 
 template <typename T>
-inline void set_value_from(Json & json, char const * key, T const & source) {
+void set_value_from(Json & json, char const * key, T const & source) {
     json[key] = source;
 }
 
 template <typename T>
-inline void set_value_from(Json & json, char const * key, std::optional<T> const & source) {
+void set_value_from(Json & json, char const * key, std::optional<T> const & source) {
     if (source) {
         json[key] = *source;
         return;
@@ -597,6 +597,10 @@ std::string cppVariant(std::vector<TypeRef> const & possibleTypes, std::string c
     return generated;
 }
 
+std::string generateDeserializationFunctionDeclaration(std::string const & typeName, size_t indentation) {
+    return indent(indentation) + "inline void from_json(" + cppJsonTypeName + " const & json, " + typeName + " & value) {\n";
+}
+
 std::string generateInterface(Type const & type, size_t indentation) {
     std::string interface;
     std::string unknownImplementation;
@@ -634,7 +638,8 @@ std::string generateUnion(Type const & type, size_t indentation) {
 
     auto const unknownTypeName = unknownCaseName + type.name;
     generated += "using " + unknownTypeName + " = std::monostate;\n\n";
-    return indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) + ";\n\n";
+    generated += indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) + ";\n\n";
+    return generated;
 }
 
 std::string generateObject(Type const & type, TypeMap const & typeMap, size_t indentation) {
@@ -649,6 +654,14 @@ std::string generateObject(Type const & type, TypeMap const & typeMap, size_t in
     }
 
     generated += indent(indentation) + "};\n\n";
+
+    return generated;
+}
+
+std::string generateObjectDeserialization(Type const & type, size_t indentation) {
+    std::string generated;
+
+    // TODO
 
     return generated;
 }
@@ -802,8 +815,8 @@ std::string generateOperationRequestFunction(Field const & field, Operation oper
     generated += ") {\n";
 
     // Use raw string literal for the query.
-    generated += indent(functionIndentation) + "Json query = R\"(\n" + document.query + indent(functionIndentation) + ")\";\n";
-    generated += indent(functionIndentation) + "Json variables;\n";
+    generated += indent(functionIndentation) + cppJsonTypeName + " query = R\"(\n" + document.query + indent(functionIndentation) + ")\";\n";
+    generated += indent(functionIndentation) + cppJsonTypeName + " variables;\n";
 
     for (auto const & variable : document.variables) {
         generated += generateFieldSerialization(variable, "", "variables", functionIndentation);
@@ -816,14 +829,22 @@ std::string generateOperationRequestFunction(Field const & field, Operation oper
     return generated;
 }
 
-std::string cppGraphqlResponse() {
-    // TODO
-}
-
-std::string generateOperationResponseFunction(Field const & field, TypeMap const & typeMap, size_t indentation) {
+std::string generateOperationResponseFunction(Field const & field, size_t indentation) {
     std::string generated;
 
-    generated += indent(indentation) + "static ";
+    auto const dataType = cppTypeName(field.type);
+    auto const errorsType = "std::vector<" + grapqlErrorTypeName + ">";
+    auto const responseType = "std::variant<" + dataType + ", " + errorsType + ">";
+
+    generated += indent(indentation) + "static " + responseType + " response(" + cppJsonTypeName + " const & json) {\n";
+
+    generated += indent(indentation + 1) + "if (json.find(\"errors\") != json.end()) {\n";
+    generated += indent(indentation + 2) + "return " + errorsType + "(json);\n";
+    generated += indent(indentation + 1) + "} else {\n";
+    generated += indent(indentation + 2) + "return " + dataType + "(json.at(\"" + field.name + "\"));\n";
+    generated += indent(indentation + 1) + "}\n";
+
+    generated += indent(indentation) + "}\n\n";
 
     return generated;
 }
@@ -836,6 +857,7 @@ std::string generateOperationType(Field const & field, Operation operation, Type
     generated += indent(indentation) + "struct " + capitalize(field.name) + " {\n\n";
 
     generated += generateOperationRequestFunction(field, operation, typeMap, indentation + 1);
+    generated += generateOperationResponseFunction(field, indentation + 1);
 
     generated += indent(indentation) + "};\n\n";
 
@@ -867,8 +889,8 @@ std::string generateGraphqlErrorType(size_t indentation) {
 std::string generateGraphqlErrorDeserialization(size_t indentation) {
     std::string generated;
 
-    generated += indent(indentation) + "inline void from_json(" + cppJsonTypeName + " const & json, " + grapqlErrorTypeName + " & error) {\n";
-    generated += indent(indentation + 1) + "json.at(\"message\").get_to(error.message);\n";
+    generated += generateDeserializationFunctionDeclaration(grapqlErrorTypeName, indentation);
+    generated += indent(indentation + 1) + "json.at(\"message\").get_to(value.message);\n";
     generated += indent(indentation) + "}\n\n";
 
     return generated;
