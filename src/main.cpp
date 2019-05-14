@@ -658,10 +658,34 @@ std::string generateObject(Type const & type, TypeMap const & typeMap, size_t in
     return generated;
 }
 
+std::string generateFieldDeserialization(Field const & field, size_t indentation) {
+    if (field.type.kind == TypeKind::NonNull) {
+        return indent(indentation) + "json.at(\"" + field.name + "\").get_to(value." + field.name + ");\n";
+    }
+
+    std::string generated;
+    generated += indent(indentation) + "{\n";
+    generated += indent(indentation + 1) + "auto it = json.find(\"" + field.name + "\");\n";
+    generated += indent(indentation + 1) + "if (it != json.end()) {\n";
+    generated += indent(indentation + 2) + "it->get_to(value." + field.name + ");\n";
+    generated += indent(indentation + 1) + "} else {\n";
+    generated += indent(indentation + 2) + "value." + field.name + ".reset();\n";
+    generated += indent(indentation + 1) + "}\n";
+    generated += indent(indentation) + "}\n";
+
+    return generated;
+}
+
 std::string generateObjectDeserialization(Type const & type, size_t indentation) {
     std::string generated;
 
-    // TODO
+    generated += generateDeserializationFunctionDeclaration(type.name, indentation);
+
+    for (auto const & field : type.fields) {
+        generated += generateFieldDeserialization(field, indentation + 1);
+    }
+
+    generated += indent(indentation) + "}\n\n";
 
     return generated;
 }
@@ -965,6 +989,7 @@ namespace nlohmann {
                     source += generateOperationTypes(type, Operation::Subscription, typeMap, typeIndentation);
                 } else {
                     source += generateObject(type, typeMap, typeIndentation);
+                    source += generateObjectDeserialization(type, typeIndentation);
                 }
                 break;
 
