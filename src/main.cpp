@@ -1,86 +1,6 @@
-#include "nlohmann/json.hpp"
+#include "BoxedOptional.hpp"
 #include <fstream>
 #include <unordered_set>
-
-template <typename T>
-struct BoxedOptional {
-
-    BoxedOptional() = default;
-
-    BoxedOptional(T value): value{new T{value}} {}
-
-    BoxedOptional(BoxedOptional const & optional) {
-        copyValueFrom(optional);
-    }
-
-    BoxedOptional & operator = (BoxedOptional const & optional) {
-        reset();
-        copyValueFrom(optional);
-        return *this;
-    }
-
-    BoxedOptional(BoxedOptional && optional) {
-        stealValueFrom(optional);
-    }
-
-    BoxedOptional & operator = (BoxedOptional && optional) {
-        reset();
-        stealValueFrom(optional);
-        return *this;
-    }
-
-    ~BoxedOptional() {
-        reset();
-    }
-
-    void reset() {
-        if (value) {
-            delete value;
-            value = nullptr;
-        }
-    }
-
-    bool has_value() const {
-        return value != nullptr;
-    }
-
-    explicit operator bool() const {
-        return has_value();
-    }
-
-    T & operator * () {
-        return *value;
-    }
-
-    T const & operator * () const {
-        return *value;
-    }
-
-    T * operator -> () {
-        return value;
-    }
-
-    T const * operator -> () const {
-        return value;
-    }
-
-private:
-    T * value = nullptr;
-
-    void copyValueFrom(BoxedOptional const & optional) {
-        if (optional.value) {
-            value = new T{*optional.value};
-        }
-    }
-
-    void stealValueFrom(BoxedOptional & optional) {
-        if (optional.value) {
-            value = optional.value;
-            optional.value = nullptr;
-        }
-    }
-
-};
 
 enum class TypeKind {
     Scalar, Object, Interface, Union, Enum, InputObject, List, NonNull
@@ -168,48 +88,6 @@ struct Schema {
 
 using TypeMap = std::unordered_map<std::string, Type>;
 
-namespace nlohmann {
-    template <typename T>
-    struct adl_serializer<std::optional<T>> {
-        static void to_json(json & json, std::optional<T> const & opt) {
-            if (opt.has_value()) {
-                json = *opt;
-            } else {
-                json = nullptr;
-            }
-        }
-
-        static void from_json(const json & json, std::optional<T> & opt) {
-            if (json.is_null()) {
-                opt.reset();
-            } else {
-                opt = json.get<T>();
-            }
-        }
-    };
-
-    template <typename T>
-    struct adl_serializer<BoxedOptional<T>> {
-        static void to_json(json & json, BoxedOptional<T> const & opt) {
-            if (opt.has_value()) {
-                json = *opt;
-            } else {
-                json = nullptr;
-            }
-        }
-
-        static void from_json(const json & json, BoxedOptional<T> & opt) {
-            if (json.is_null()) {
-                opt.reset();
-            } else {
-                opt = json.get<T>();
-            }
-        }
-    };
-}
-
-using Json = nlohmann::json;
-
 NLOHMANN_JSON_SERIALIZE_ENUM(TypeKind, {
     {TypeKind::Scalar, "SCALAR"},
     {TypeKind::Object, "OBJECT"},
@@ -220,48 +98,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(TypeKind, {
     {TypeKind::List, "LIST"},
     {TypeKind::NonNull, "NON_NULL"}
 });
-
-template <typename T>
-void get_value_to(Json const & json, char const * key, T & target) {
-    json.at(key).get_to(target);
-}
-
-template <typename T>
-void get_value_to(Json const & json, char const * key, std::optional<T> & target) {
-    auto it = json.find(key);
-    if (it != json.end()) {
-        it->get_to(target);
-    } else {
-        target.reset();
-    }
-}
-
-template <typename T>
-void get_value_to(Json const & json, char const * key, BoxedOptional<T> & target) {
-    auto it = json.find(key);
-    if (it != json.end()) {
-        it->get_to(target);
-    } else {
-        target.reset();
-    }
-}
-
-template <typename T>
-void set_value_from(Json & json, char const * key, T const & source) {
-    json[key] = source;
-}
-
-template <typename T>
-void set_value_from(Json & json, char const * key, std::optional<T> const & source) {
-    if (source) {
-        json[key] = *source;
-        return;
-    }
-    auto it = json.find(key);
-    if (it != json.end()) {
-        json.erase(it);
-    }
-}
 
 void from_json(Json const & json, TypeRef & type) {
     get_value_to(json, "kind", type.kind);

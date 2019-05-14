@@ -4,6 +4,8 @@ project(CaffQL LANGUAGES CXX)
 
 add_executable(CaffQL
     src/main.cpp
+    src/Json.hpp
+    src/BoxedOptional.hpp
 )
 
 target_compile_features(CaffQL PRIVATE cxx_std_17)
