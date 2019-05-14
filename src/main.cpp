@@ -489,7 +489,7 @@ std::string generateEnum(Type const & type, size_t indentation) {
     return generated;
 }
 
-std::string generateEnumSerialization(Type const & type, size_t indentation) {
+std::string generateEnumSerializationFunctions(Type const & type, size_t indentation) {
     std::string generated;
 
     generated += indent(indentation) + "NLOHMANN_JSON_SERIALIZE_ENUM(" + type.name + ", {\n";
@@ -669,6 +669,25 @@ std::string generateInputObject(Type const & type, size_t indentation) {
     return generated;
 }
 
+template <typename FieldType>
+std::string generateFieldSerialization(FieldType const & field, const std::string & fieldPrefix, const std::string & jsonName, size_t indentation) {
+    return indent(indentation) + jsonName + "[\"" + field.name + "\"] = " + fieldPrefix + field.name + ";\n";
+}
+
+std::string generateInputObjectSerializationFunction(Type const & type, size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + "inline void to_json(" + cppJsonTypeName + " & json, " + type.name + " const & object) {\n";
+
+    for (auto const & field : type.inputFields) {
+        generated += generateFieldSerialization(field, "object.", "json", indentation + 1);
+    }
+
+    generated += indent(indentation) + "}\n\n";
+
+    return generated;
+}
+
 std::string operationQueryName(Operation operation) {
     switch (operation) {
         case Operation::Query:
@@ -787,21 +806,7 @@ std::string generateOperationRequestFunction(Field const & field, Operation oper
     generated += indent(functionIndentation) + "Json variables;\n";
 
     for (auto const & variable : document.variables) {
-        if (variable.type.kind == TypeKind::NonNull) {
-            generated += indent(functionIndentation) + "variables[\"" + variable.name + "\"] = " + variable.name + ";\n";
-        } else {
-            // For optionals, check if present before adding to json.
-            // TODO: Use an optional overload for json.
-
-            // Make sure there is an empty line before the if statement
-            if (generated.size() < 2 || generated.substr(generated.size() - 2, 2) != "\n\n") {
-                generated += "\n";
-            }
-
-            generated += indent(functionIndentation) + "if (" + variable.name + ") {\n";
-            generated += indent(functionIndentation + 1) + "variables[\"" + variable.name + "\"] = *" + variable.name + ";\n";
-            generated += indent(functionIndentation) + "}\n\n";
-        }
+        generated += generateFieldSerialization(variable, "", "variables", functionIndentation);
     }
 
     generated += indent(functionIndentation) + "return {{\"query\", std::move(query)}, {\"variables\", std::move(variables)}};\n";
@@ -879,6 +884,28 @@ R"(// This file was automatically generated and should not be edited.
 #include <vector>
 #include "nlohmann/json.hpp"
 
+// std::optional serialization
+namespace nlohmann {
+    template <typename T>
+    struct adl_serializer<std::optional<T>> {
+        static void to_json(json & json, std::optional<T> const & opt) {
+            if (opt.has_value()) {
+                json = *opt;
+            } else {
+                json = nullptr;
+            }
+        }
+
+        static void from_json(const json & json, std::optional<T> & opt) {
+            if (json.is_null()) {
+                opt.reset();
+            } else {
+                opt = json.get<T>();
+            }
+        }
+    };
+}
+
 )";
 
     source += "namespace " + generatedNamespace + " {\n\n";
@@ -918,11 +945,12 @@ R"(// This file was automatically generated and should not be edited.
 
             case TypeKind::Enum:
                 source += generateEnum(type, typeIndentation);
-                source += generateEnumSerialization(type, typeIndentation);
+                source += generateEnumSerializationFunctions(type, typeIndentation);
                 break;
 
             case TypeKind::InputObject:
                 source += generateInputObject(type, typeIndentation);
+                source += generateInputObjectSerializationFunction(type, typeIndentation);
                 break;
 
             case TypeKind::Scalar:
