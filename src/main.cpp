@@ -858,8 +858,18 @@ std::string generateOperationTypes(Type const & type, Operation operation, TypeM
 
 std::string generateGraphqlErrorType(size_t indentation) {
     std::string generated;
-    //generated += indent(indentation) + "struct " + grapqlErrorTypeName + " {\n";
+    generated += indent(indentation) + "struct " + grapqlErrorTypeName + " {\n";
+    generated += indent(indentation + 1) + "std::string message;\n";
+    generated += indent(indentation) + "};\n\n";
+    return generated;
+}
 
+std::string generateGraphqlErrorDeserialization(size_t indentation) {
+    std::string generated;
+
+    generated += indent(indentation) + "inline void from_json(" + cppJsonTypeName + " const & json, " + grapqlErrorTypeName + " & error) {\n";
+    generated += indent(indentation + 1) + "json.at(\"message\").get_to(error.message);\n";
+    generated += indent(indentation) + "}\n\n";
 
     return generated;
 }
@@ -916,6 +926,7 @@ namespace nlohmann {
     source += indent(typeIndentation) + "using " + cppIdTypeName + " = std::string;\n\n";
 
     source += generateGraphqlErrorType(typeIndentation);
+    source += generateGraphqlErrorDeserialization(typeIndentation);
 
     for (auto const & type : sortedTypes) {
         auto isOperationType = [&](std::optional<Schema::OperationType> const & special) {
