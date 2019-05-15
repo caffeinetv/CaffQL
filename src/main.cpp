@@ -12,9 +12,9 @@ struct ProgramInputs {
 
 ProgramInputs parseCommandLine(int argc, char * argv[]) {
     try {
-        cxxopts::Options options("caffql", "Generate c++ types and GraphQL request and response serialization from a GraphQL introspected schema json file.");
+        cxxopts::Options options("caffql", "Generate c++ types and GraphQL request and response serialization from a GraphQL json schema file.");
         options.add_options()
-        ("s,schema", "input schema json file", cxxopts::value<std::string>())
+        ("s,schema", "input json schema file", cxxopts::value<std::string>())
         ("o,output", "output generated header file", cxxopts::value<std::string>())
         ("n,namespace", "generated namespace", cxxopts::value<std::string>()->default_value("caffql"))
         ("h,help", "help");
