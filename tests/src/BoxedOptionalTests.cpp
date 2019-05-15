@@ -33,6 +33,13 @@ TEST_SUITE("BoxedOptional") {
         CHECK(&*b == address);
     }
 
+    TEST_CASE("equality") {
+        CHECK(BoxedOptional<int>(5) == BoxedOptional<int>(5));
+        CHECK(BoxedOptional<int>() == BoxedOptional<int>());
+        CHECK(BoxedOptional<int>(5) != BoxedOptional<int>(6));
+        CHECK(BoxedOptional<int>(5) != BoxedOptional<int>());
+    }
+
     TEST_CASE("deserialization") {
 
         SUBCASE("from value") {
