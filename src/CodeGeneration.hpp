@@ -2,6 +2,8 @@
 #include "BoxedOptional.hpp"
 #include <unordered_set>
 
+namespace caffql {
+
 enum class TypeKind {
     Scalar, Object, Interface, Union, Enum, InputObject, List, NonNull
 };
@@ -203,3 +205,4 @@ std::string generateGraphqlErrorDeserialization(size_t indentation);
 
 std::string generateTypes(Schema const & schema, std::string const & generatedNamespace);
 
+}

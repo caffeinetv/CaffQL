@@ -2,6 +2,8 @@
 #include <fstream>
 
 int main(int argc, const char * argv[]) {
+    using namespace caffql;
+
     if (argc < 3) {
         printf("Please provide an input schema and namespace\n");
         return 0;

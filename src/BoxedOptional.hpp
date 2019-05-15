@@ -1,6 +1,8 @@
 #pragma once
 #include "Json.hpp"
 
+namespace caffql {
+
 template <typename T>
 struct BoxedOptional {
 
@@ -81,10 +83,12 @@ private:
 
 };
 
+}
+
 namespace nlohmann {
     template <typename T>
-    struct adl_serializer<BoxedOptional<T>> {
-        static void to_json(json & json, BoxedOptional<T> const & opt) {
+    struct adl_serializer<caffql::BoxedOptional<T>> {
+        static void to_json(json & json, caffql::BoxedOptional<T> const & opt) {
             if (opt.has_value()) {
                 json = *opt;
             } else {
@@ -92,7 +96,7 @@ namespace nlohmann {
             }
         }
 
-        static void from_json(const json & json, BoxedOptional<T> & opt) {
+        static void from_json(const json & json, caffql::BoxedOptional<T> & opt) {
             if (json.is_null()) {
                 opt.reset();
             } else {
@@ -102,6 +106,8 @@ namespace nlohmann {
     };
 }
 
+namespace caffql {
+
 template <typename T>
 void get_value_to(Json const & json, char const * key, BoxedOptional<T> & target) {
     auto it = json.find(key);
@@ -110,4 +116,6 @@ void get_value_to(Json const & json, char const * key, BoxedOptional<T> & target
     } else {
         target.reset();
     }
+}
+
 }

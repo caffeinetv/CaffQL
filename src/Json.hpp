@@ -22,6 +22,8 @@ namespace nlohmann {
     };
 }
 
+namespace caffql {
+
 using Json = nlohmann::json;
 
 template <typename T>
@@ -37,4 +39,6 @@ void get_value_to(Json const & json, char const * key, std::optional<T> & target
     } else {
         target.reset();
     }
+}
+
 }

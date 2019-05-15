@@ -1,5 +1,7 @@
 #include "CodeGeneration.hpp"
 
+namespace caffql {
+
 void from_json(Json const & json, TypeRef & type) {
     get_value_to(json, "kind", type.kind);
     get_value_to(json, "name", type.name);
@@ -805,3 +807,4 @@ std::string generateTypes(Schema const & schema, std::string const & generatedNa
     return source;
 }
 
+}

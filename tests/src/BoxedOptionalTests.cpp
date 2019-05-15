@@ -1,6 +1,8 @@
 #include "doctest.h"
 #include "BoxedOptional.hpp"
 
+using namespace caffql;
+
 TEST_SUITE("BoxedOptional") {
 
     TEST_CASE("default construction does not have value") {
