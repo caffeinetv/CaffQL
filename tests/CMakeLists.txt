@@ -3,6 +3,8 @@ add_executable(tests
     src/BoxedOptionalTests.cpp
 )
 
+target_link_libraries(tests PRIVATE caffql)
+
 target_include_directories(tests
     PRIVATE
     third_party/doctest
