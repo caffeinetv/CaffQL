@@ -1,6 +1,7 @@
 add_executable(tests
     src/test-main.cpp
     src/BoxedOptionalTests.cpp
+    src/CodeGenerationTests.cpp
 )
 
 target_link_libraries(tests PRIVATE caffql)

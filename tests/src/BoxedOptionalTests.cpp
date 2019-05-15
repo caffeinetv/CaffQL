@@ -34,6 +34,7 @@ TEST_SUITE("BoxedOptional") {
     }
 
     TEST_CASE("deserialization") {
+
         SUBCASE("from value") {
             BoxedOptional<std::string> x(Json("test"));
             CHECK(*x == "test");
@@ -43,6 +44,7 @@ TEST_SUITE("BoxedOptional") {
             BoxedOptional<std::string> x(Json(nullptr));
             CHECK_FALSE(x);
         }
+        
     }
 
 }

@@ -83,6 +83,20 @@ private:
 
 };
 
+template <typename T> bool operator == (BoxedOptional<T> const & lhs, BoxedOptional<T> const & rhs) {
+    if (lhs.has_value() != rhs.has_value()) {
+        return false;
+    }
+    if (!lhs) {
+        return true;
+    }
+    return *lhs == *rhs;
+}
+
+template <typename T> bool operator != (BoxedOptional<T> const & lhs, BoxedOptional<T> const & rhs) {
+    return !(lhs == rhs);
+}
+
 }
 
 namespace nlohmann {

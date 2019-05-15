@@ -2,6 +2,14 @@
 #include "BoxedOptional.hpp"
 #include <unordered_set>
 
+#define CAFFQL_DEFINE_EQUALS(T, equals) \
+inline bool operator == (T const & lhs, T const & rhs) { \
+equals \
+} \
+inline bool operator != (T const & lhs, T const & rhs) { \
+return !(lhs == rhs); \
+} \
+
 namespace caffql {
 
 enum class TypeKind {
@@ -34,26 +42,50 @@ struct TypeRef {
 
 };
 
+CAFFQL_DEFINE_EQUALS(TypeRef,
+    return lhs.kind == rhs.kind
+        && lhs.name == rhs.name
+        && lhs.ofType == rhs.ofType;
+)
+
 struct InputValue {
+    TypeRef type;
     std::string name;
     std::string description;
-    TypeRef type;
     // TODO: Default value
 };
 
+CAFFQL_DEFINE_EQUALS(InputValue,
+    return lhs.type == rhs.type
+        && lhs.name == rhs.name
+        && lhs.description == rhs.description;
+)
+
 struct Field {
+    TypeRef type;
     std::string name;
     std::string description;
     std::vector<InputValue> args;
-    TypeRef type;
     // TODO: Deprecation
 };
+
+CAFFQL_DEFINE_EQUALS(Field,
+    return lhs.type == rhs.type
+        && lhs.name == rhs.name
+        && lhs.description == rhs.description
+        && lhs.args == rhs.args;
+)
 
 struct EnumValue {
     std::string name;
     std::string description;
     // TODO: Deprecation
 };
+
+CAFFQL_DEFINE_EQUALS(EnumValue,
+    return lhs.name == rhs.name
+        && lhs.description == rhs.description;
+)
 
 struct Type {
     TypeKind kind;
@@ -70,6 +102,17 @@ struct Type {
     // Interface and Union only
     std::vector<TypeRef> possibleTypes;
 };
+
+CAFFQL_DEFINE_EQUALS(Type,
+    return lhs.kind == rhs.kind
+        && lhs.name == rhs.name
+        && lhs.description == rhs.description
+        && lhs.fields == rhs.fields
+        && lhs.inputFields == rhs.inputFields
+        && lhs.interfaces == rhs.interfaces
+        && lhs.enumValues == rhs.enumValues
+        && lhs.possibleTypes == rhs.possibleTypes;
+)
 
 enum class Operation {
     Query, Mutation, Subscription
