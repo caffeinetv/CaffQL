@@ -16,6 +16,7 @@ add_executable(CaffQL
 target_include_directories(CaffQL
     PRIVATE
     third_party/nlohmann_json/single_include
+    third_party/cxxopts/include
 )
 
 option(BUILD_TESTING "Enable tests" ON)
