@@ -9,6 +9,8 @@ add_executable(CaffQL
     src/main.cpp
     src/Json.hpp
     src/BoxedOptional.hpp
+    src/CodeGeneration.hpp
+    src/CodeGeneration.cpp
 )
 
 target_include_directories(CaffQL
