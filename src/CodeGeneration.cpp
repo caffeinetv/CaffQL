@@ -722,29 +722,29 @@ std::string generateTypes(Schema const & schema, std::string const & generatedNa
 #include <vector>
 #include "nlohmann/json.hpp"
 
-    // std::optional serialization
-    namespace nlohmann {
-        template <typename T>
-        struct adl_serializer<std::optional<T>> {
-            static void to_json(json & json, std::optional<T> const & opt) {
-                if (opt.has_value()) {
-                    json = *opt;
-                } else {
-                    json = nullptr;
-                }
+// std::optional serialization
+namespace nlohmann {
+    template <typename T>
+    struct adl_serializer<std::optional<T>> {
+        static void to_json(json & json, std::optional<T> const & opt) {
+            if (opt.has_value()) {
+                json = *opt;
+            } else {
+                json = nullptr;
             }
+        }
 
-            static void from_json(const json & json, std::optional<T> & opt) {
-                if (json.is_null()) {
-                    opt.reset();
-                } else {
-                    opt = json.get<T>();
-                }
+        static void from_json(const json & json, std::optional<T> & opt) {
+            if (json.is_null()) {
+                opt.reset();
+            } else {
+                opt = json.get<T>();
             }
-        };
-    }
+        }
+    };
+}
 
-    )";
+)";
 
     source += "namespace " + generatedNamespace + " {\n\n";
 
