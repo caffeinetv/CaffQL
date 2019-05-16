@@ -3,102 +3,103 @@
 
 using namespace caffql;
 
-TEST_SUITE("Code Generation") {
+TEST_SUITE_BEGIN("Code generation");
 
-    TEST_CASE("custom type sorting") {
+TEST_CASE("custom type sorting") {
 
-        SUBCASE("sorts types so that dependencies are before dependents") {
-            Type a{TypeKind::Enum, "A"};
-            // Has field of type A
-            Type b{TypeKind::Object, "B", "", {Field{TypeRef{TypeKind::Enum, "A"}, "a"}}};
-            // Has field of type A and possible type B
-            Type c{TypeKind::Interface, "C", "", {Field{TypeRef{TypeKind::Enum, "A"}, "a"}}, {}, {}, {}, {TypeRef{TypeKind::Object, "B"}}};
-            // Has field of type [C!]!
-            TypeRef nonNullListOfNonNullC{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::Interface, "C"}}}};
-            Type d{TypeKind::Object, "D", "", {Field{nonNullListOfNonNullC}}};
-            // Union of possible types A, B, C, D
-            Type e{TypeKind::Union, "E", "", {}, {}, {}, {}, {TypeRef{TypeKind::Enum, "A"}, TypeRef{TypeKind::Object, "B"}, TypeRef{TypeKind::Interface, "C"}, TypeRef{TypeKind::Object, "D"}}};
-            // Input Object with input value of type A
-            Type f{TypeKind::InputObject, "F", "", {}, {InputValue{TypeRef{TypeKind::Enum, "A"}, "a"}}};
-            // Has field of type A with argument of type F
-            Type g{TypeKind::Object, "G", "", {Field{TypeRef{TypeKind::Enum, "A"}, "a", "", {InputValue{TypeRef{TypeKind::InputObject, "F"}}}}}};
+    SUBCASE("sorts types so that dependencies are before dependents") {
+        Type a{TypeKind::Enum, "A"};
+        // Has field of type A
+        Type b{TypeKind::Object, "B", "", {Field{TypeRef{TypeKind::Enum, "A"}, "a"}}};
+        // Has field of type A and possible type B
+        Type c{TypeKind::Interface, "C", "", {Field{TypeRef{TypeKind::Enum, "A"}, "a"}}, {}, {}, {}, {TypeRef{TypeKind::Object, "B"}}};
+        // Has field of type [C!]!
+        TypeRef nonNullListOfNonNullC{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::Interface, "C"}}}};
+        Type d{TypeKind::Object, "D", "", {Field{nonNullListOfNonNullC}}};
+        // Union of possible types A, B, C, D
+        Type e{TypeKind::Union, "E", "", {}, {}, {}, {}, {TypeRef{TypeKind::Enum, "A"}, TypeRef{TypeKind::Object, "B"}, TypeRef{TypeKind::Interface, "C"}, TypeRef{TypeKind::Object, "D"}}};
+        // Input Object with input value of type A
+        Type f{TypeKind::InputObject, "F", "", {}, {InputValue{TypeRef{TypeKind::Enum, "A"}, "a"}}};
+        // Has field of type A with argument of type F
+        Type g{TypeKind::Object, "G", "", {Field{TypeRef{TypeKind::Enum, "A"}, "a", "", {InputValue{TypeRef{TypeKind::InputObject, "F"}}}}}};
 
-            auto sorted = sortCustomTypesByDependencyOrder({g, f, e, d, c, b, a});
-            CHECK(sorted == std::vector{a, f, g, b, c, d, e});
-        }
-
-        SUBCASE("throws on circular type references") {
-            Type a{TypeKind::Object, "A", "", {Field{TypeRef{TypeKind::Object, "B"}, "b"}}};
-            Type b{TypeKind::Object, "B", "", {Field{TypeRef{TypeKind::Object, "A"}, "a"}}};
-            CHECK_THROWS(sortCustomTypesByDependencyOrder({a, b}));
-        }
-
-        SUBCASE("filters out non custom types") {
-            auto types = sortCustomTypesByDependencyOrder({{TypeKind::Scalar}, {TypeKind::List}, {TypeKind::NonNull}});
-            CHECK(types.empty());
-        }
-
+        auto sorted = sortCustomTypesByDependencyOrder({g, f, e, d, c, b, a});
+        CHECK(sorted == std::vector{a, f, g, b, c, d, e});
     }
 
-    TEST_CASE("string conversion functions") {
-        CHECK(screamingSnakeCaseToPascalCase("SOME_WORDS_HERE") == "SomeWordsHere");
-        CHECK(capitalize("text") == "Text");
-        CHECK(uncapitalize("Text") == "text");
+    SUBCASE("throws on circular type references") {
+        Type a{TypeKind::Object, "A", "", {Field{TypeRef{TypeKind::Object, "B"}, "b"}}};
+        Type b{TypeKind::Object, "B", "", {Field{TypeRef{TypeKind::Object, "A"}, "a"}}};
+        CHECK_THROWS(sortCustomTypesByDependencyOrder({a, b}));
     }
 
-    TEST_CASE("generate description") {
-
-        SUBCASE("empty description generates nothing") {
-            CHECK(generateDescription("", 0) == "");
-        }
-
-        SUBCASE("Description with no line breaks generates a single-line comment bounded by line breaks") {
-            CHECK(generateDescription("Description", 0) == "\n// Description\n");
-        }
-
-        SUBCASE("Description with line breaks generates block comment bounded by line breaks") {
-            auto description = "Description\nwith\nlines";
-            auto expected = R"(
-            /*
-            Description
-            with
-            lines
-            */
-)";
-            CHECK(generateDescription(description, 3) == expected);
-        }
-
-    }
-
-    TEST_CASE("enum generation") {
-        Type enumType{TypeKind::Enum, "EnumType"};
-        enumType.enumValues = {{"CASE_ONE"}, {"CASE_TWO", "Description"}};
-
-        SUBCASE("type") {
-            std::string expected = R"(
-            enum class EnumType {
-                CaseOne,
-
-                // Description
-                CaseTwo,
-                Unknown = -1
-            };
-
-)";
-            CHECK("\n" + generateEnum(enumType, 3) == expected);
-        }
-
-        SUBCASE("serialization") {
-            std::string expected = R"(
-            NLOHMANN_JSON_SERIALIZE_ENUM(EnumType, {
-                {EnumType::Unknown, nullptr},
-                {EnumType::CaseOne, "CASE_ONE"},
-                {EnumType::CaseTwo, "CASE_TWO"},
-            });
-
-)";
-            CHECK("\n" + generateEnumSerialization(enumType, 3) == expected);
-        }
+    SUBCASE("filters out non custom types") {
+        auto types = sortCustomTypesByDependencyOrder({{TypeKind::Scalar}, {TypeKind::List}, {TypeKind::NonNull}});
+        CHECK(types.empty());
     }
 
 }
+
+TEST_CASE("string conversion functions") {
+    CHECK(screamingSnakeCaseToPascalCase("SOME_WORDS_HERE") == "SomeWordsHere");
+    CHECK(capitalize("text") == "Text");
+    CHECK(uncapitalize("Text") == "text");
+}
+
+TEST_CASE("generate description") {
+
+    SUBCASE("empty description generates nothing") {
+        CHECK(generateDescription("", 0) == "");
+    }
+
+    SUBCASE("Description with no line breaks generates a single-line comment bounded by line breaks") {
+        CHECK(generateDescription("Description", 0) == "\n// Description\n");
+    }
+
+    SUBCASE("Description with line breaks generates block comment bounded by line breaks") {
+        auto description = "Description\nwith\nlines";
+        auto expected = R"(
+        /*
+        Description
+        with
+        lines
+        */
+)";
+        CHECK(generateDescription(description, 2) == expected);
+    }
+
+}
+
+TEST_CASE("enum generation") {
+    Type enumType{TypeKind::Enum, "EnumType"};
+    enumType.enumValues = {{"CASE_ONE"}, {"CASE_TWO", "Description"}};
+
+    SUBCASE("type") {
+        std::string expected = R"(
+        enum class EnumType {
+            CaseOne,
+
+            // Description
+            CaseTwo,
+            Unknown = -1
+        };
+
+)";
+        CHECK("\n" + generateEnum(enumType, 2) == expected);
+    }
+
+    SUBCASE("serialization") {
+        std::string expected = R"(
+        NLOHMANN_JSON_SERIALIZE_ENUM(EnumType, {
+            {EnumType::Unknown, nullptr},
+            {EnumType::CaseOne, "CASE_ONE"},
+            {EnumType::CaseTwo, "CASE_TWO"},
+        });
+
+)";
+        CHECK("\n" + generateEnumSerialization(enumType, 2) == expected);
+    }
+    
+}
+
+TEST_SUITE_END;
