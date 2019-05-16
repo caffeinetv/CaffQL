@@ -3,7 +3,7 @@
 
 using namespace caffql;
 
-TEST_SUITE_BEGIN("Code generation");
+TEST_SUITE_BEGIN("Code Generation");
 
 TEST_CASE("custom type sorting") {
 

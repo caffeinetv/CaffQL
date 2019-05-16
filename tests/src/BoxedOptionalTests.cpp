@@ -3,7 +3,7 @@
 
 using namespace caffql;
 
-TEST_SUITE_BEGIN("BoxedOptional");
+TEST_SUITE_BEGIN("Boxed Optional");
 
 TEST_CASE("default construction does not have value") {
     BoxedOptional<int> optional;
