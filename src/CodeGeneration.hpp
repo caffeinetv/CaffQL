@@ -178,7 +178,7 @@ std::string uncapitalize(std::string string);
 
 std::string generateEnum(Type const & type, size_t indentation);
 
-std::string generateEnumSerializationFunctions(Type const & type, size_t indentation);
+std::string generateEnumSerialization(Type const & type, size_t indentation);
 
 Scalar scalarType(std::string const & name);
 
@@ -212,7 +212,7 @@ std::string generateObjectDeserialization(Type const & type, size_t indentation)
 
 std::string generateInputObject(Type const & type, size_t indentation);
 
-std::string generateInputObjectSerializationFunction(Type const & type, size_t indentation);
+std::string generateInputObjectSerialization(Type const & type, size_t indentation);
 
 std::string operationQueryName(Operation operation);
 

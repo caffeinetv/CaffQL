@@ -40,4 +40,65 @@ TEST_SUITE("Code Generation") {
 
     }
 
+    TEST_CASE("string conversion functions") {
+        CHECK(screamingSnakeCaseToPascalCase("SOME_WORDS_HERE") == "SomeWordsHere");
+        CHECK(capitalize("text") == "Text");
+        CHECK(uncapitalize("Text") == "text");
+    }
+
+    TEST_CASE("generate description") {
+
+        SUBCASE("empty description generates nothing") {
+            CHECK(generateDescription("", 0) == "");
+        }
+
+        SUBCASE("Description with no line breaks generates a single-line comment bounded by line breaks") {
+            CHECK(generateDescription("Description", 0) == "\n// Description\n");
+        }
+
+        SUBCASE("Description with line breaks generates block comment bounded by line breaks") {
+            auto description = "Description\nwith\nlines";
+            auto expected = R"(
+            /*
+            Description
+            with
+            lines
+            */
+)";
+            CHECK(generateDescription(description, 3) == expected);
+        }
+
+    }
+
+    TEST_CASE("enum generation") {
+        Type enumType{TypeKind::Enum, "EnumType"};
+        enumType.enumValues = {{"CASE_ONE"}, {"CASE_TWO", "Description"}};
+
+        SUBCASE("type") {
+            std::string expected = R"(
+            enum class EnumType {
+                CaseOne,
+
+                // Description
+                CaseTwo,
+                Unknown = -1
+            };
+
+)";
+            CHECK("\n" + generateEnum(enumType, 3) == expected);
+        }
+
+        SUBCASE("serialization") {
+            std::string expected = R"(
+            NLOHMANN_JSON_SERIALIZE_ENUM(EnumType, {
+                {EnumType::Unknown, nullptr},
+                {EnumType::CaseOne, "CASE_ONE"},
+                {EnumType::CaseTwo, "CASE_TWO"},
+            });
+
+)";
+            CHECK("\n" + generateEnumSerialization(enumType, 3) == expected);
+        }
+    }
+
 }

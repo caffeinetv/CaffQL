@@ -222,7 +222,7 @@ std::string generateEnum(Type const & type, size_t indentation) {
     return generated;
 }
 
-std::string generateEnumSerializationFunctions(Type const & type, size_t indentation) {
+std::string generateEnumSerialization(Type const & type, size_t indentation) {
     std::string generated;
 
     generated += indent(indentation) + "NLOHMANN_JSON_SERIALIZE_ENUM(" + type.name + ", {\n";
@@ -492,7 +492,7 @@ static std::string generateFieldSerialization(FieldType const & field, const std
     return indent(indentation) + jsonName + "[\"" + field.name + "\"] = " + fieldPrefix + field.name + ";\n";
 }
 
-std::string generateInputObjectSerializationFunction(Type const & type, size_t indentation) {
+std::string generateInputObjectSerialization(Type const & type, size_t indentation) {
     std::string generated;
 
     generated += indent(indentation) + "inline void to_json(" + cppJsonTypeName + " & json, " + type.name + " const & object) {\n";
@@ -787,12 +787,12 @@ namespace nlohmann {
 
             case TypeKind::Enum:
                 source += generateEnum(type, typeIndentation);
-                source += generateEnumSerializationFunctions(type, typeIndentation);
+                source += generateEnumSerialization(type, typeIndentation);
                 break;
 
             case TypeKind::InputObject:
                 source += generateInputObject(type, typeIndentation);
-                source += generateInputObjectSerializationFunction(type, typeIndentation);
+                source += generateInputObjectSerialization(type, typeIndentation);
                 break;
 
             case TypeKind::Scalar:
