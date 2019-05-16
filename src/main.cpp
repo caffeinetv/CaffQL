@@ -36,10 +36,6 @@ ProgramInputs parseCommandLine(int argc, char * argv[]) {
             exit(1);
         }
 
-        auto schemaFile = result["schema"].as<std::string>();
-        auto generatedNamespace = result["namespace"].as<std::string>();
-        auto outputFile = result["output"].as<std::string>();
-
         return {
             result["schema"].as<std::string>(),
             result["output"].as<std::string>(),
