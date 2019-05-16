@@ -46,7 +46,7 @@ TEST_CASE("string conversion functions") {
     CHECK(uncapitalize("Text") == "text");
 }
 
-TEST_CASE("generate description") {
+TEST_CASE("description generation") {
 
     SUBCASE("empty description generates nothing") {
         CHECK(generateDescription("", 0) == "");
