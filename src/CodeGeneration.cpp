@@ -273,7 +273,7 @@ std::string cppScalarName(Scalar scalar) {
 
 std::string cppTypeName(TypeRef const & type, bool shouldCheckNullability) {
     if (shouldCheckNullability && type.kind != TypeKind::NonNull) {
-        return "std::optional<" + cppTypeName(type, false) + ">";
+        return "optional<" + cppTypeName(type, false) + ">";
     }
 
     switch (type.kind) {
@@ -314,7 +314,7 @@ std::string graphqlTypeName(TypeRef const & type) {
 }
 
 std::string cppVariant(std::vector<TypeRef> const & possibleTypes, std::string const & unknownTypeName) {
-    std::string generated = "std::variant<";
+    std::string generated = "variant<";
     for (auto const & type : possibleTypes) {
         generated += type.name.value() + ", ";
     }
@@ -386,7 +386,7 @@ std::string generateInterface(Type const & type, size_t indentation) {
         auto const typeNameConstRef = typeName + " const & ";
         interface += generateDescription(field.description, fieldIndentation);
         interface += indent(fieldIndentation) + typeNameConstRef + field.name + "() const {\n";
-        interface += indent(fieldIndentation + 1) + "return std::visit([](auto const & implementation) -> "
+        interface += indent(fieldIndentation + 1) + "return visit([](auto const & implementation) -> "
         + typeNameConstRef + "{\n";
         interface += indent(fieldIndentation + 2) + "return implementation." + field.name + ";\n";
         interface += indent(fieldIndentation + 1) + "}, implementation);\n";
@@ -424,7 +424,7 @@ std::string generateUnion(Type const & type, size_t indentation) {
     std::string generated;
 
     auto const unknownTypeName = unknownCaseName + type.name;
-    generated += indent(indentation) + "using " + unknownTypeName + " = std::monostate;\n";
+    generated += indent(indentation) + "using " + unknownTypeName + " = monostate;\n";
     generated += indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) + ";\n\n";
     return generated;
 }
@@ -627,7 +627,7 @@ std::string generateOperationResponseFunction(Field const & field, size_t indent
 
     auto const dataType = cppTypeName(field.type);
     auto const errorsType = "std::vector<" + std::string{grapqlErrorTypeName} + ">";
-    auto const responseType = "std::variant<" + dataType + ", " + errorsType + ">";
+    auto const responseType = "variant<" + dataType + ", " + errorsType + ">";
 
     generated += indent(indentation) + "static " + responseType + " response(" + cppJsonTypeName + " const & json) {\n";
 
@@ -701,7 +701,67 @@ std::string generateGraphqlErrorDeserialization(size_t indentation) {
     return generated;
 }
 
-std::string generateTypes(Schema const & schema, std::string const & generatedNamespace) {
+std::string algrebraicNamespaceName(AlgebraicNamespace algebraicNamespace) {
+    switch (algebraicNamespace) {
+        case AlgebraicNamespace::Std:
+            return "std";
+        case AlgebraicNamespace::Absl:
+            return "absl";
+    }
+}
+
+static std::string generateOptionalSerialization(AlgebraicNamespace algebraicNamespace) {
+    auto const namespaceName = algrebraicNamespaceName(algebraicNamespace);
+    char const * optionalInclude;
+    char const * variantInclude;
+
+    switch (algebraicNamespace) {
+        case AlgebraicNamespace::Std:
+            optionalInclude = "<optional>";
+            variantInclude = "<variant>";
+            break;
+
+        case AlgebraicNamespace::Absl:
+            optionalInclude = "\"absl/types/optional.h\"";
+            variantInclude = "\"absl/types/variant.h\"";
+            break;
+    }
+
+
+    auto format = R"(
+#include %s
+#include %s
+
+// optional serialization
+namespace nlohmann {
+    template <typename T>
+    struct adl_serializer<%s::optional<T>> {
+        static void to_json(json & json, %s::optional<T> const & opt) {
+            if (opt.has_value()) {
+                json = *opt;
+            } else {
+                json = nullptr;
+            }
+        }
+
+        static void from_json(const json & json, %s::optional<T> & opt) {
+            if (json.is_null()) {
+                opt.reset();
+            } else {
+                opt = json.get<T>();
+            }
+        }
+    };
+}
+
+)";
+
+    char buffer[1000];
+    sprintf(buffer, format, optionalInclude, variantInclude, namespaceName.c_str(), namespaceName.c_str(), namespaceName.c_str());
+    return buffer;
+}
+
+std::string generateTypes(Schema const & schema, std::string const & generatedNamespace, AlgebraicNamespace algebraicNamespace) {
     auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
 
     TypeMap typeMap;
@@ -717,41 +777,27 @@ std::string generateTypes(Schema const & schema, std::string const & generatedNa
 #pragma once
 
 #include <memory>
-#include <optional>
-#include <variant>
 #include <vector>
-#include "nlohmann/json.hpp"
+#include "nlohmann/json.hpp")";
 
-// std::optional serialization
-namespace nlohmann {
-    template <typename T>
-    struct adl_serializer<std::optional<T>> {
-        static void to_json(json & json, std::optional<T> const & opt) {
-            if (opt.has_value()) {
-                json = *opt;
-            } else {
-                json = nullptr;
-            }
-        }
-
-        static void from_json(const json & json, std::optional<T> & opt) {
-            if (json.is_null()) {
-                opt.reset();
-            } else {
-                opt = json.get<T>();
-            }
-        }
-    };
-}
-
-)";
+    source += generateOptionalSerialization(algebraicNamespace);
 
     source += "namespace " + generatedNamespace + " {\n\n";
 
     size_t typeIndentation = 1;
 
     source += indent(typeIndentation) + "using " + cppJsonTypeName + " = nlohmann::json;\n";
-    source += indent(typeIndentation) + "using " + cppIdTypeName + " = std::string;\n\n";
+    source += indent(typeIndentation) + "using " + cppIdTypeName + " = std::string;\n";
+
+    auto useAlgebraic = [&](char const * name) {
+        source += indent(typeIndentation) + "using " + algrebraicNamespaceName(algebraicNamespace) + "::" + name + ";\n";
+    };
+    
+    useAlgebraic("optional");
+    useAlgebraic("variant");
+    useAlgebraic("monostate");
+    useAlgebraic("visit");
+    source += "\n";
 
     source += generateGraphqlErrorType(typeIndentation);
     source += generateGraphqlErrorDeserialization(typeIndentation);

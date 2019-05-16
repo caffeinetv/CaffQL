@@ -121,10 +121,10 @@ TEST_CASE("interface generation") {
         };
 
         struct InterfaceType {
-            std::variant<A, B, UnknownInterfaceType> implementation;
+            variant<A, B, UnknownInterfaceType> implementation;
 
             FieldType const & field() const {
-                return std::visit([](auto const & implementation) -> FieldType const & {
+                return visit([](auto const & implementation) -> FieldType const & {
                     return implementation.field;
                 }, implementation);
             }
@@ -167,8 +167,8 @@ TEST_CASE("union generation") {
 
     SUBCASE("type") {
         std::string expected = R"(
-        using UnknownUnionType = std::monostate;
-        using UnionType = std::variant<A, B, UnknownUnionType>;
+        using UnknownUnionType = monostate;
+        using UnionType = variant<A, B, UnknownUnionType>;
 
 )";
         CHECK("\n" + generateUnion(unionType, 2) == expected);

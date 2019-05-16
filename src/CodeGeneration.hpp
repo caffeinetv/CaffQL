@@ -246,6 +246,13 @@ std::string generateGraphqlErrorType(size_t indentation);
 
 std::string generateGraphqlErrorDeserialization(size_t indentation);
 
-std::string generateTypes(Schema const & schema, std::string const & generatedNamespace);
+enum class AlgebraicNamespace {
+    Std,
+    Absl
+};
+
+std::string algrebraicNamespaceName(AlgebraicNamespace algebraicNamespace);
+
+std::string generateTypes(Schema const & schema, std::string const & generatedNamespace, AlgebraicNamespace algebraicNamespace);
 
 }

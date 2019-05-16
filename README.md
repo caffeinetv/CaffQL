@@ -9,6 +9,7 @@
 -s, --schema arg     input json schema file
 -o, --output arg     output generated header file
 -n, --namespace arg  generated namespace (default: caffql)
+-a, --absl           use absl optional and variant instead of std
 -h, --help           help
 ```
 
@@ -25,7 +26,8 @@ Make an [introspection query](IntrospectionQuery.graphql) to your graphql endpoi
 ## Generated Code
 `caffql` generates a c++ header file with types necessary to perform queries.
 ### Requirements
-* c++17 for `std::optional` and `std::variant`
+* c++17 for `std::optional` and `std::variant`  
+  **or** c++11 and [Abseil](https://abseil.io/) for `absl::optional` and `absl::variant`
 * [nlohmann/json](https://github.com/nlohmann/json) for request and response serialization
 
 ### Operations
@@ -43,10 +45,10 @@ Make an [introspection query](IntrospectionQuery.graphql) to your graphql endpoi
 | Enum            | enum class                                                 |
 | Object          | struct                                                     |
 | Interface       | struct containing std::variant of possible implementations |
-| Union           | std::variant of possible types                             |
+| Union           | variant of possible types                             |
 | InputObject     | struct                                                     |
 | List            | std::vector                                                |
-| Nullable fields | std::optional                                              |
+| Nullable fields | optional                                              |
 
 #### Type considerations and forwards compatibility
 ##### Enums

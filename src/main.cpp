@@ -8,6 +8,7 @@ struct ProgramInputs {
     std::string schemaFile;
     std::string outputFile;
     std::string generatedNamespace;
+    AlgebraicNamespace algebraicNamespace;
 };
 
 ProgramInputs parseCommandLine(int argc, char * argv[]) {
@@ -17,6 +18,7 @@ ProgramInputs parseCommandLine(int argc, char * argv[]) {
         ("s,schema", "input json schema file", cxxopts::value<std::string>())
         ("o,output", "output generated header file", cxxopts::value<std::string>())
         ("n,namespace", "generated namespace", cxxopts::value<std::string>()->default_value("caffql"))
+        ("a,absl", "use absl optional and variant instead of std")
         ("h,help", "help");
 
         auto result = options.parse(argc, argv);
@@ -39,7 +41,8 @@ ProgramInputs parseCommandLine(int argc, char * argv[]) {
         return {
             result["schema"].as<std::string>(),
             result["output"].as<std::string>(),
-            result["namespace"].as<std::string>()
+            result["namespace"].as<std::string>(),
+            result.count("absl") ? AlgebraicNamespace::Absl : AlgebraicNamespace::Std
         };
     } catch (cxxopts::OptionException const & e) {
         printf("Error parsing options: %s\n", e.what());
@@ -59,15 +62,16 @@ int main(int argc, char * argv[]) {
         auto const json = Json::parse(file);
         Schema schema = json.at("data").at("__schema");
 
-        auto const source = generateTypes(schema, inputs.generatedNamespace);
+        auto const source = generateTypes(schema, inputs.generatedNamespace, inputs.algebraicNamespace);
         std::ofstream out(inputs.outputFile);
         out << source;
         out.close();
 
-        printf("Generated %s with namespace %s from %s\n",
+        printf("Generated %s with namespace %s from %s using %s optional and variant\n",
                inputs.outputFile.c_str(),
                inputs.generatedNamespace.c_str(),
-               inputs.schemaFile.c_str());
+               inputs.schemaFile.c_str(),
+               algrebraicNamespaceName(inputs.algebraicNamespace).c_str());
 
         return 0;
     } catch (std::ios_base::failure const & e) {
