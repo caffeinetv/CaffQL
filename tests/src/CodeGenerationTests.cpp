@@ -102,4 +102,60 @@ TEST_CASE("enum generation") {
     
 }
 
+TEST_CASE("interface generation") {
+    Type interfaceType{TypeKind::Interface, "InterfaceType"};
+
+    interfaceType.fields = {
+        Field{TypeRef{TypeKind::NonNull, "", TypeRef{TypeKind::Object, "FieldType"}}, "field"}
+    };
+
+    interfaceType.possibleTypes = {
+        TypeRef{TypeKind::Object, "A"},
+        TypeRef{TypeKind::Object, "B"}
+    };
+
+    SUBCASE("type") {
+        std::string expected = R"(
+        struct UnknownInterfaceType {
+            FieldType field;
+        };
+
+        struct InterfaceType {
+            std::variant<A, B, UnknownInterfaceType> implementation;
+
+            FieldType const & field() const {
+                return std::visit([](auto const & implementation) -> FieldType const & {
+                    return implementation.field;
+                }, implementation);
+            }
+
+        };
+
+)";
+        CHECK("\n" + generateInterface(interfaceType, 2) == expected);
+    }
+
+    SUBCASE("deserialization") {
+        std::string expected = R"(
+        inline void from_json(Json const & json, UnknownInterfaceType & value) {
+            json.at("field").get_to(value.field);
+        }
+
+        inline void from_json(Json const & json, InterfaceType & value) {
+            std::string occupiedType = json.at("__typename");
+            if (occupiedType == "A") {
+                value = {A(json)};
+            } else if (occupiedType == "B") {
+                value = {B(json)};
+            } else {
+                value = {UnknownInterfaceType(json)};
+            }
+        }
+
+)";
+        CHECK("\n" + generateInterfaceDeserialization(interfaceType, 2) == expected);
+    }
+
+}
+
 TEST_SUITE_END;
