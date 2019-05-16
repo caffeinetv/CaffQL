@@ -74,14 +74,12 @@ int main(int argc, char * argv[]) {
                inputs.schemaFile.c_str());
 
         return 0;
-    } catch (std::ifstream::failure const & e) {
-        printf("Error opening schema file: %s\n", e.what());
+    } catch (std::ios_base::failure const & e) {
+        printf("File error: %s\n", e.what());
     } catch (Json::parse_error const & e) {
         printf("Error parsing schema file: %s\n", e.what());
     } catch (Json::exception const & e) {
         printf("Error deserializing schema file: %s\n", e.what());
-    } catch (std::ofstream::failure const & e) {
-        printf("Error writing output file: %s\n", e.what());
     } catch (std::exception const & e) {
         printf("Error occurred: %s\n", e.what());
     } catch (...) {

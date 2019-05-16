@@ -43,12 +43,12 @@ TEST_CASE("equality") {
 TEST_CASE("deserialization") {
 
     SUBCASE("from value") {
-        BoxedOptional<std::string> x(Json("test"));
+        BoxedOptional<std::string> x = Json("test");
         CHECK(*x == "test");
     }
 
     SUBCASE("from null") {
-        BoxedOptional<std::string> x(Json(nullptr));
+        BoxedOptional<std::string> x = Json(nullptr);
         CHECK_FALSE(x);
     }
 
