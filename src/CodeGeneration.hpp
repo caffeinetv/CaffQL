@@ -206,7 +206,7 @@ std::string generateUnion(Type const & type, size_t indentation);
 
 std::string generateUnionDeserialization(Type const & type, size_t indentation);
 
-std::string generateObject(Type const & type, TypeMap const & typeMap, size_t indentation);
+std::string generateObject(Type const & type, size_t indentation);
 
 std::string generateObjectDeserialization(Type const & type, size_t indentation);
 

@@ -441,7 +441,7 @@ static std::string generateField(T const & field, size_t indentation) {
     return generated;
 }
 
-std::string generateObject(Type const & type, TypeMap const & typeMap, size_t indentation) {
+std::string generateObject(Type const & type, size_t indentation) {
     std::string generated;
 
     generated += indent(indentation) + "struct " + type.name + " {\n";
@@ -770,7 +770,7 @@ namespace nlohmann {
                 } else if (isOperationType(schema.subscriptionType)) {
                     source += generateOperationTypes(type, Operation::Subscription, typeMap, typeIndentation);
                 } else {
-                    source += generateObject(type, typeMap, typeIndentation);
+                    source += generateObject(type, typeIndentation);
                     source += generateObjectDeserialization(type, typeIndentation);
                 }
                 break;
