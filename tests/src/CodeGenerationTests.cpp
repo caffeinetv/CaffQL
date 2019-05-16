@@ -158,4 +158,39 @@ TEST_CASE("interface generation") {
 
 }
 
+TEST_CASE("union generation") {
+    Type unionType{TypeKind::Union, "UnionType"};
+    unionType.possibleTypes = {
+        TypeRef{TypeKind::Object, "A"},
+        TypeRef{TypeKind::Object, "B"}
+    };
+
+    SUBCASE("type") {
+        std::string expected = R"(
+        using UnknownUnionType = std::monostate;
+        using UnionType = std::variant<A, B, UnknownUnionType>;
+
+)";
+        CHECK("\n" + generateUnion(unionType, 2) == expected);
+    }
+
+    SUBCASE("deserialization") {
+        std::string expected = R"(
+        inline void from_json(Json const & json, UnionType & value) {
+            std::string occupiedType = json.at("__typename");
+            if (occupiedType == "A") {
+                value = {A(json)};
+            } else if (occupiedType == "B") {
+                value = {B(json)};
+            } else {
+                value = {UnknownUnionType()};
+            }
+        }
+
+)";
+        CHECK("\n" + generateUnionDeserialization(unionType, 2) == expected);
+    }
+
+}
+
 TEST_SUITE_END;

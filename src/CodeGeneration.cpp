@@ -424,7 +424,7 @@ std::string generateUnion(Type const & type, size_t indentation) {
     std::string generated;
 
     auto const unknownTypeName = unknownCaseName + type.name;
-    generated += "using " + unknownTypeName + " = std::monostate;\n\n";
+    generated += indent(indentation) + "using " + unknownTypeName + " = std::monostate;\n";
     generated += indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) + ";\n\n";
     return generated;
 }
