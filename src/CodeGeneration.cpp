@@ -495,10 +495,10 @@ static std::string generateFieldSerialization(FieldType const & field, const std
 std::string generateInputObjectSerialization(Type const & type, size_t indentation) {
     std::string generated;
 
-    generated += indent(indentation) + "inline void to_json(" + cppJsonTypeName + " & json, " + type.name + " const & object) {\n";
+    generated += indent(indentation) + "inline void to_json(" + cppJsonTypeName + " & json, " + type.name + " const & value) {\n";
 
     for (auto const & field : type.inputFields) {
-        generated += generateFieldSerialization(field, "object.", "json", indentation + 1);
+        generated += generateFieldSerialization(field, "value.", "json", indentation + 1);
     }
 
     generated += indent(indentation) + "}\n\n";

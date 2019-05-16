@@ -193,4 +193,60 @@ TEST_CASE("union generation") {
 
 }
 
+TEST_CASE("object generation") {
+    Type objectType{TypeKind::Object, "ObjectType"};
+    objectType.fields = {
+        Field{TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::Object, "FieldType"}}, "field"}
+    };
+
+    SUBCASE("type") {
+        std::string expected = R"(
+        struct ObjectType {
+            FieldType field;
+        };
+
+)";
+
+        CHECK("\n" + generateObject(objectType, 2) == expected);
+    }
+
+    SUBCASE("deserialization") {
+        std::string expected = R"(
+        inline void from_json(Json const & json, ObjectType & value) {
+            json.at("field").get_to(value.field);
+        }
+
+)";
+        CHECK("\n" + generateObjectDeserialization(objectType, 2) == expected);
+    }
+}
+
+TEST_CASE("input object generation") {
+    Type inputObjectType{TypeKind::InputObject, "InputObjectType"};
+    inputObjectType.inputFields = {
+        InputValue{TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::InputObject, "InputFieldType"}}, "field"}
+    };
+
+    SUBCASE("type") {
+        std::string expected = R"(
+        struct InputObjectType {
+            InputFieldType field;
+        };
+
+)";
+
+        CHECK("\n" + generateInputObject(inputObjectType, 2) == expected);
+    }
+
+    SUBCASE("serialization") {
+        std::string expected = R"(
+        inline void to_json(Json & json, InputObjectType const & value) {
+            json["field"] = value.field;
+        }
+
+)";
+        CHECK("\n" + generateInputObjectSerialization(inputObjectType, 2) == expected);
+    }
+}
+
 TEST_SUITE_END;
