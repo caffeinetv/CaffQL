@@ -632,15 +632,15 @@ std::string generateOperationResponseFunction(Field const & field, size_t indent
     generated += indent(indentation) + "static " + responseType + " response(" + cppJsonTypeName + " const & json) {\n";
 
     generated += indent(indentation + 1) + "if (json.find(\"errors\") != json.end()) {\n";
-    generated += indent(indentation + 2) + "return " + errorsType + "(json);\n";
+    generated += indent(indentation + 2) + "return " + errorsType + "{json};\n";
     generated += indent(indentation + 1) + "} else {\n";
 
     if (field.type.kind == TypeKind::NonNull) {
-        generated += indent(indentation + 2) + "return " + dataType + "(json.at(\"" + field.name + "\"));\n";
+        generated += indent(indentation + 2) + "return " + dataType + "{json.at(\"" + field.name + "\")};\n";
     } else {
         generated += indent(indentation + 2) + "auto it = json.find(\"" + field.name + "\");\n";
         generated += indent(indentation + 2) + "if (it != json.end()) {\n";
-        generated += indent(indentation + 3) + "return " + dataType + "(*it);\n";
+        generated += indent(indentation + 3) + "return " + dataType + "{*it};\n";
         generated += indent(indentation + 2) + "} else {\n";
         generated += indent(indentation + 3) + "return " + dataType + "();\n";
         generated += indent(indentation + 2) + "}\n";
