@@ -627,8 +627,9 @@ std::string generateOperationResponseFunction(Field const & field, size_t indent
 
     auto const dataType = cppTypeName(field.type);
     auto const errorsType = "std::vector<" + std::string{grapqlErrorTypeName} + ">";
-    auto const responseType = "variant<" + dataType + ", " + errorsType + ">";
+    auto const responseType = "GraphqlResponse<ResponseData>";
 
+    generated += indent(indentation) + "using ResponseData = " + dataType + ";\n\n";
     generated += indent(indentation) + "static " + responseType + " response(" + cppJsonTypeName + " const & json) {\n";
 
     generated += indent(indentation + 1) + "if (json.find(\"errors\") != json.end()) {\n";
@@ -636,13 +637,13 @@ std::string generateOperationResponseFunction(Field const & field, size_t indent
     generated += indent(indentation + 1) + "} else {\n";
 
     if (field.type.kind == TypeKind::NonNull) {
-        generated += indent(indentation + 2) + "return " + dataType + "{json.at(\"" + field.name + "\")};\n";
+        generated += indent(indentation + 2) + "return ResponseData{json.at(\"" + field.name + "\")};\n";
     } else {
         generated += indent(indentation + 2) + "auto it = json.find(\"" + field.name + "\");\n";
         generated += indent(indentation + 2) + "if (it != json.end()) {\n";
-        generated += indent(indentation + 3) + "return " + dataType + "{*it};\n";
+        generated += indent(indentation + 3) + "return ResponseData{*it};\n";
         generated += indent(indentation + 2) + "} else {\n";
-        generated += indent(indentation + 3) + "return " + dataType + "();\n";
+        generated += indent(indentation + 3) + "return ResponseData{};\n";
         generated += indent(indentation + 2) + "}\n";
     }
 
@@ -688,6 +689,9 @@ std::string generateGraphqlErrorType(size_t indentation) {
     generated += indent(indentation) + "struct " + grapqlErrorTypeName + " {\n";
     generated += indent(indentation + 1) + "std::string message;\n";
     generated += indent(indentation) + "};\n\n";
+    generated += indent(indentation) + "template <typename Data>\n";
+    generated += indent(indentation) + "using GraphqlResponse = variant<Data, std::vector<" + grapqlErrorTypeName + ">>;\n\n";
+
     return generated;
 }
 
