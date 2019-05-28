@@ -680,11 +680,11 @@ std::string generateOperationResponseFunction(Field const & field, size_t indent
     generated += indent(indentation + 1) + "} else {\n";
 
     if (field.type.kind == TypeKind::NonNull) {
-        generated += indent(indentation + 2) + "return ResponseData{json.at(\"" + field.name + "\")};\n";
+        generated += indent(indentation + 2) + "return ResponseData(json.at(\"" + field.name + "\"));\n";
     } else {
         generated += indent(indentation + 2) + "auto it = json.find(\"" + field.name + "\");\n";
         generated += indent(indentation + 2) + "if (it != json.end()) {\n";
-        generated += indent(indentation + 3) + "return ResponseData{*it};\n";
+        generated += indent(indentation + 3) + "return ResponseData(*it);\n";
         generated += indent(indentation + 2) + "} else {\n";
         generated += indent(indentation + 3) + "return ResponseData{};\n";
         generated += indent(indentation + 2) + "}\n";
