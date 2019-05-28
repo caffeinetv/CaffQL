@@ -249,4 +249,30 @@ TEST_CASE("input object generation") {
     }
 }
 
+TEST_CASE("request function argument passing") {
+    SUBCASE("non-string primitive types should be passed by value") {
+        CHECK_FALSE(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "Int"}));
+        CHECK_FALSE(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "Float"}));
+        CHECK_FALSE(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "Boolean"}));
+        CHECK_FALSE(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::NonNull, {}, {TypeRef{TypeKind::Scalar, "Int"}}}));
+    }
+
+    SUBCASE("string primitive types should be passed by reference") {
+        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "String"}));
+        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "ID"}));
+        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::NonNull, {}, {TypeRef{TypeKind::Scalar, "String"}}}));
+    }
+
+    SUBCASE("lists should be passed by reference") {
+        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::List, {}, {TypeRef{TypeKind::Scalar, "Int"}}}));
+        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, {TypeRef{TypeKind::Scalar, "Int"}}}}));
+    }
+
+    SUBCASE("input objects should be passed by reference") {
+        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::InputObject, "InputType"}));
+        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::NonNull, {}, { TypeRef{TypeKind::InputObject, "InputType"}}}));
+    }
+
+}
+
 TEST_SUITE_END;

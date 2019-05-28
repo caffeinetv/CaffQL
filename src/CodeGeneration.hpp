@@ -234,6 +234,8 @@ struct QueryDocument {
 
 QueryDocument generateQueryDocument(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation);
 
+bool shouldPassByReferenceToRequestFunction(TypeRef const & type);
+
 std::string generateOperationRequestFunction(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation);
 
 std::string generateOperationResponseFunction(Field const & field, size_t indentation);

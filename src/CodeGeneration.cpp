@@ -588,6 +588,45 @@ QueryDocument generateQueryDocument(Field const & field, Operation operation, Ty
     return document;
 }
 
+bool shouldPassByReferenceToRequestFunction(TypeRef const & type) {
+    auto currentType = &type;
+    while (true) {
+        switch (currentType->kind) {
+            case TypeKind::Scalar:
+                switch (scalarType(currentType->name.value())) {
+                    case Scalar::Int:
+                    case Scalar::Float:
+                    case Scalar::Boolean:
+                        return false;
+
+                    case Scalar::String:
+                    case Scalar::ID:
+                        return true;
+                }
+                break;
+
+            case TypeKind::Enum:
+                return false;
+
+            case TypeKind::Object:
+            case TypeKind::Interface:
+            case TypeKind::Union:
+            case TypeKind::InputObject:
+            case TypeKind::List:
+                return true;
+
+            case TypeKind::NonNull:
+                if (currentType->ofType) {
+                    currentType = &*currentType->ofType;
+                    continue;
+                } else {
+                    throw std::runtime_error{"Nonnull should be wrapped a type"};
+                }
+        }
+    }
+
+}
+
 std::string generateOperationRequestFunction(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation) {
     auto const functionIndentation = indentation + 1;
     auto const queryIndentation = functionIndentation + 1;
@@ -598,7 +637,11 @@ std::string generateOperationRequestFunction(Field const & field, Operation oper
     generated += indent(indentation) + "static " + cppJsonTypeName + " request(";
 
     for (auto it = document.variables.begin(); it != document.variables.end(); ++it) {
-        generated += cppTypeName(it->type) + " " + it->name;
+        auto typeName = cppTypeName(it->type);
+        if (shouldPassByReferenceToRequestFunction(it->type)) {
+            typeName += " const &";
+        }
+        generated += typeName + " " + it->name;
 
         if (it != document.variables.end() - 1) {
             generated += ", ";
