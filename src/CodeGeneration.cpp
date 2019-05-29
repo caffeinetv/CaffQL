@@ -675,15 +675,18 @@ std::string generateOperationResponseFunction(Field const & field, size_t indent
     generated += indent(indentation) + "using ResponseData = " + dataType + ";\n\n";
     generated += indent(indentation) + "static " + responseType + " response(" + cppJsonTypeName + " const & json) {\n";
 
-    generated += indent(indentation + 1) + "if (json.find(\"errors\") != json.end()) {\n";
-    generated += indent(indentation + 2) + "return " + errorsType + "{json};\n";
+    generated += indent(indentation + 1) + "auto errors = json.find(\"errors\");\n";
+    generated += indent(indentation + 1) + "if (errors != json.end()) {\n";
+    generated += indent(indentation + 2) + "return " + errorsType + "{*errors};\n";
     generated += indent(indentation + 1) + "} else {\n";
 
+    generated += indent(indentation + 2) + "auto const & data = json.at(\"data\");\n";
+
     if (field.type.kind == TypeKind::NonNull) {
-        generated += indent(indentation + 2) + "return ResponseData(json.at(\"" + field.name + "\"));\n";
+        generated += indent(indentation + 2) + "return ResponseData(data.at(\"" + field.name + "\"));\n";
     } else {
-        generated += indent(indentation + 2) + "auto it = json.find(\"" + field.name + "\");\n";
-        generated += indent(indentation + 2) + "if (it != json.end()) {\n";
+        generated += indent(indentation + 2) + "auto it = data.find(\"" + field.name + "\");\n";
+        generated += indent(indentation + 2) + "if (it != data.end()) {\n";
         generated += indent(indentation + 3) + "return ResponseData(*it);\n";
         generated += indent(indentation + 2) + "} else {\n";
         generated += indent(indentation + 3) + "return ResponseData{};\n";
