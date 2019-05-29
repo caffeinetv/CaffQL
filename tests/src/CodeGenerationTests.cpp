@@ -7,7 +7,7 @@ TEST_SUITE_BEGIN("Code Generation");
 
 TEST_CASE("custom type sorting") {
 
-    SUBCASE("sorts types so that dependencies are before dependents") {
+    SUBCASE("sorts types so that dependencies are before dependents and subsorts alphabetaically") {
         Type a{TypeKind::Enum, "A"};
         // Has field of type A
         Type b{TypeKind::Object, "B", "", {Field{TypeRef{TypeKind::Enum, "A"}, "a"}}};
@@ -24,7 +24,7 @@ TEST_CASE("custom type sorting") {
         Type g{TypeKind::Object, "G", "", {Field{TypeRef{TypeKind::Enum, "A"}, "a", "", {InputValue{TypeRef{TypeKind::InputObject, "F"}}}}}};
 
         auto sorted = sortCustomTypesByDependencyOrder({g, f, e, d, c, b, a});
-        CHECK(sorted == std::vector{a, f, g, b, c, d, e});
+        CHECK(sorted == std::vector{a, b, c, d, e, f, g});
     }
 
     SUBCASE("throws on circular type references") {

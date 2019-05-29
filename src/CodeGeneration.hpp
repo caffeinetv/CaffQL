@@ -158,6 +158,8 @@ void from_json(Json const & json, Schema::OperationType & operationType);
 
 void from_json(Json const & json, Schema & schema);
 
+// Sorts dependent types before their dependencies so types can be declared in the proper compilation order.
+// Subsorts alphabetically so that sorting is deterministic.
 std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & types);
 
 constexpr size_t spacesPerIndent = 4;

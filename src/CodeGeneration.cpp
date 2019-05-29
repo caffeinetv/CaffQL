@@ -57,7 +57,7 @@ std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & typ
     };
 
     unordered_map<string, unordered_set<string>> typesToDependents;
-    unordered_map<string, TypeWithDependencies> typesToDependencies;
+    map<string, TypeWithDependencies> typesToDependencies;
 
     auto isCustomType = [](TypeKind kind) {
         switch (kind) {
