@@ -677,7 +677,8 @@ std::string generateOperationResponseFunction(Field const & field, size_t indent
 
     generated += indent(indentation + 1) + "auto errors = json.find(\"errors\");\n";
     generated += indent(indentation + 1) + "if (errors != json.end()) {\n";
-    generated += indent(indentation + 2) + "return " + errorsType + "{*errors};\n";
+    generated += indent(indentation + 2) + errorsType + " errorsList = " + "*errors;\n";
+    generated += indent(indentation + 2) + "return errorsList;\n";
     generated += indent(indentation + 1) + "} else {\n";
 
     generated += indent(indentation + 2) + "auto const & data = json.at(\"data\");\n";
