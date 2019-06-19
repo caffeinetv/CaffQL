@@ -31,7 +31,9 @@ Make an [introspection query](IntrospectionQuery.graphql) to your graphql endpoi
 * [nlohmann/json](https://github.com/nlohmann/json) for request and response serialization
 
 ### Operations
-`caffql` will generate request and response functions for each field of the input schema's operation (`query`, `subscription`, and `mutation`) types. Currently only a single field can be queried at once.
+`caffql` will generate request and response functions for each field of the input schema's operation types (`query`, `subscription`, and `mutation`). Currently only a single field can be queried at once. 
+
+All subfields and nested types of that field will be included in the query, i.e. there is no way to query a subset of a model. The benefits to this approach are that you don't have to handwrite any queries and the generated request and response functions are kept simple, while the drawback is that you can't omit any unwanted data.
 
 ### Types
 
