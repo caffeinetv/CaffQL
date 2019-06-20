@@ -726,7 +726,7 @@ std::string generateOperationTypes(Type const & type, Operation operation, TypeM
         generated += generateOperationType(field, operation, typeMap, indentation + 1);
     }
 
-    generated += indent(indentation) + "}; // namespace " + type.name + " \n\n";
+    generated += indent(indentation) + "} // namespace " + type.name + "\n\n";
 
     return generated;
 }
