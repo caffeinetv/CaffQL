@@ -149,9 +149,6 @@ std::string generateDescription(std::string const & description, size_t indentat
 
     std::string generated;
 
-    // Insert a line break before comments
-    generated += "\n";
-
     if (description.find('\n') == std::string::npos) {
         generated += indent(indentation) + "// " + description + "\n";
     } else {
@@ -206,6 +203,7 @@ std::string uncapitalize(std::string string) {
 
 std::string generateEnum(Type const & type, size_t indentation) {
     std::string generated;
+    generated += generateDescription(type.description, indentation);
     generated += indent(indentation) + "enum class " + type.name + " {\n";
 
     auto const valueIndentation = indentation + 1;
@@ -371,6 +369,7 @@ std::string generateInterface(Type const & type, size_t indentation) {
     std::string interface;
     std::string unknownImplementation;
 
+    interface += generateDescription(type.description, indentation);
     interface += indent(indentation) + "struct " + type.name + " {\n";
     auto const unknownTypeName = unknownCaseName + type.name;
     unknownImplementation += indent(indentation) + "struct " + unknownTypeName + " {\n";
@@ -425,6 +424,7 @@ std::string generateUnion(Type const & type, size_t indentation) {
 
     auto const unknownTypeName = unknownCaseName + type.name;
     generated += indent(indentation) + "using " + unknownTypeName + " = monostate;\n";
+    generated += generateDescription(type.description, indentation);
     generated += indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) + ";\n\n";
     return generated;
 }
@@ -444,6 +444,7 @@ static std::string generateField(T const & field, size_t indentation) {
 std::string generateObject(Type const & type, size_t indentation) {
     std::string generated;
 
+    generated += generateDescription(type.description, indentation);
     generated += indent(indentation) + "struct " + type.name + " {\n";
 
     auto const fieldIndentation = indentation + 1;
@@ -474,6 +475,7 @@ std::string generateObjectDeserialization(Type const & type, size_t indentation)
 std::string generateInputObject(Type const & type, size_t indentation) {
     std::string generated;
 
+    generated += generateDescription(type.description, indentation);
     generated += indent(indentation) + "struct " + type.name + " {\n";
 
     auto const fieldIndentation = indentation + 1;

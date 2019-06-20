@@ -53,7 +53,7 @@ TEST_CASE("description generation") {
     }
 
     SUBCASE("Description with no line breaks generates a single-line comment bounded by line breaks") {
-        CHECK(generateDescription("Description", 0) == "\n// Description\n");
+        CHECK(generateDescription("Description", 0) == "// Description\n");
     }
 
     SUBCASE("Description with line breaks generates block comment bounded by line breaks") {
@@ -65,7 +65,7 @@ TEST_CASE("description generation") {
         lines
         */
 )";
-        CHECK(generateDescription(description, 2) == expected);
+        CHECK("\n" + generateDescription(description, 2) == expected);
     }
 
 }
@@ -78,7 +78,6 @@ TEST_CASE("enum generation") {
         std::string expected = R"(
         enum class EnumType {
             CaseOne,
-
             // Description
             CaseTwo,
             Unknown = -1
