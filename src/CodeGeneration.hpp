@@ -101,6 +101,11 @@ struct Type {
     std::vector<EnumValue> enumValues;
     // Interface and Union only
     std::vector<TypeRef> possibleTypes;
+
+    operator TypeRef () const {
+        return {kind, name};
+    }
+
 };
 
 CAFFQL_DEFINE_EQUALS(Type,
