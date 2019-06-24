@@ -385,6 +385,31 @@ TEST_CASE("query field generation") {
         CHECK("\n" + generateQueryField(field, typeMap, "", variables, 2) == expected);
     }
 
+    SUBCASE("arguments") {
+        Field field{TypeRef{TypeKind::Scalar, "Int"}, "field"};
+
+        field.args = {
+            InputValue{TypeRef{TypeKind::Scalar, "Int"}, "argA"},
+            InputValue{TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::Scalar, "Int"}}}, "argB"}
+        };
+
+        auto expected = R"(
+        field(
+            argA: $argA
+            argB: $argB
+        )
+)";
+
+        CHECK("\n" + generateQueryField(field, typeMap, "", variables, 2) == expected);
+
+        std::vector<QueryVariable> expectedVariables{
+            {field.args[0].name, field.args[0].type},
+            {field.args[1].name, field.args[1].type}
+        };
+
+        CHECK(variables == expectedVariables);
+    }
+
 }
 
 TEST_SUITE_END;

@@ -228,6 +228,11 @@ struct QueryVariable {
     TypeRef type;
 };
 
+CAFFQL_DEFINE_EQUALS(QueryVariable,
+    return lhs.name == rhs.name
+        && lhs.type == rhs.type;
+)
+
 std::string appendNameToVariablePrefix(std::string const & variablePrefix, std::string const & name);
 
 std::string generateQueryFields(Type const & type, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation);
