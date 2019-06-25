@@ -64,6 +64,10 @@ TEST_CASE("graphql type name") {
 
 TEST_CASE("description generation") {
 
+    SUBCASE("null description generates nothing") {
+        CHECK(generateDescription(std::nullopt, 0) == "");
+    }
+
     SUBCASE("empty description generates nothing") {
         CHECK(generateDescription("", 0) == "");
     }

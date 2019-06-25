@@ -30,11 +30,19 @@ void from_json(Json const & json, Type & type) {
     get_value_to(json, "kind", type.kind);
     get_value_to(json, "name", type.name);
     get_value_to(json, "description", type.description);
-    get_value_to(json, "fields", type.fields);
-    get_value_to(json, "inputFields", type.inputFields);
-    get_value_to(json, "interfaces", type.interfaces);
-    get_value_to(json, "enumValues", type.enumValues);
-    get_value_to(json, "possibleTypes", type.possibleTypes);
+
+    auto get_optional_array_to = [&](char const * key, auto & target) {
+        auto it = json.find(key);
+        if (it != json.end() && it->is_array()) {
+            get_value_to(json, key, target);
+        }
+    };
+
+    get_optional_array_to("fields", type.fields);
+    get_optional_array_to("inputFields", type.inputFields);
+    get_optional_array_to("interfaces", type.interfaces);
+    get_optional_array_to("enumValues", type.enumValues);
+    get_optional_array_to("possibleTypes", type.possibleTypes);
 }
 
 void from_json(Json const & json, Schema::OperationType & operationType) {
@@ -76,7 +84,8 @@ std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & typ
     };
 
     for (auto const & type : types) {
-        if (!isCustomType(type.kind)) {
+        // Ignore metatypes, which begin with underscores
+        if (!isCustomType(type.kind) || type.name.rfind("__", 0) == 0) {
             continue;
         }
 
@@ -142,7 +151,12 @@ std::string indent(size_t indentation) {
     return std::string(indentation * spacesPerIndent, ' ');
 }
 
-std::string generateDescription(std::string const & description, size_t indentation) {
+std::string generateDescription(std::optional<std::string> const & optionalDescription, size_t indentation) {
+    if (!optionalDescription) {
+        return "";
+    }
+
+    auto const & description = *optionalDescription;
     if (description.empty()) {
         return {};
     }

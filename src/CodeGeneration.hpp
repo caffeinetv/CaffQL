@@ -51,7 +51,7 @@ CAFFQL_DEFINE_EQUALS(TypeRef,
 struct InputValue {
     TypeRef type;
     std::string name;
-    std::string description;
+    std::optional<std::string> description;
     // TODO: Default value
 };
 
@@ -64,7 +64,7 @@ CAFFQL_DEFINE_EQUALS(InputValue,
 struct Field {
     TypeRef type;
     std::string name;
-    std::string description;
+    std::optional<std::string> description;
     std::vector<InputValue> args;
     // TODO: Deprecation
 };
@@ -78,7 +78,7 @@ CAFFQL_DEFINE_EQUALS(Field,
 
 struct EnumValue {
     std::string name;
-    std::string description;
+    std::optional<std::string> description;
     // TODO: Deprecation
 };
 
@@ -90,7 +90,7 @@ CAFFQL_DEFINE_EQUALS(EnumValue,
 struct Type {
     TypeKind kind;
     std::string name;
-    std::string description;
+    std::optional<std::string> description;
     // Object and Interface only
     std::vector<Field> fields;
     // InputObject only
@@ -175,7 +175,7 @@ constexpr auto grapqlErrorTypeName = "GraphqlError";
 
 std::string indent(size_t indentation);
 
-std::string generateDescription(std::string const & description, size_t indentation);
+std::string generateDescription(std::optional<std::string> const & description, size_t indentation);
 
 std::string screamingSnakeCaseToPascalCase(std::string const & snake);
 
