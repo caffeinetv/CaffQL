@@ -410,6 +410,37 @@ TEST_CASE("query field generation") {
         CHECK(variables == expectedVariables);
     }
 
+    SUBCASE("nested arguments") {
+        Type objectType{TypeKind::Object, "Object"};
+        Field nestedField{TypeRef{TypeKind::Scalar, "Int"}, "nestedField"};
+
+        nestedField.args = {
+            InputValue{TypeRef{TypeKind::Scalar, "Int"}, "nestedArg"}
+        };
+
+        objectType.fields = {nestedField};
+
+        Field field{objectType, "field"};
+
+        typeMap = {{"Object", objectType}};
+
+        auto expected = R"(
+        field {
+            nestedField(
+                nestedArg: $objectNestedFieldNestedArg
+            )
+        }
+)";
+
+        CHECK("\n" + generateQueryField(field, typeMap, "", variables, 2) == expected);
+
+        std::vector<QueryVariable> expectedVariables{
+            {"objectNestedFieldNestedArg", nestedField.args[0].type}
+        };
+
+        CHECK(variables == expectedVariables);
+    }
+
 }
 
 TEST_SUITE_END;

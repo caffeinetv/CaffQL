@@ -520,7 +520,7 @@ std::string operationQueryName(Operation operation) {
 }
 
 std::string appendNameToVariablePrefix(std::string const & variablePrefix, std::string const & name) {
-    return variablePrefix.empty() ? name : variablePrefix + capitalize(name);
+    return variablePrefix.empty() ? uncapitalize(name) : variablePrefix + capitalize(name);
 }
 
 std::string generateQueryField(Field const & field, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation) {
@@ -531,9 +531,9 @@ std::string generateQueryField(Field const & field, TypeMap const & typeMap, std
     if (!field.args.empty()) {
         generated += "(\n";
         for (auto const & arg : field.args) {
-            auto name = appendNameToVariablePrefix(variablePrefix, arg.name);
-            generated += indent(indentation + 1) + name + ": $" + name + "\n";
-            variables.push_back({name, arg.type});
+            auto variableName = appendNameToVariablePrefix(variablePrefix, arg.name);
+            generated += indent(indentation + 1) + arg.name + ": $" + variableName + "\n";
+            variables.push_back({variableName, arg.type});
         }
         generated += indent(indentation) + ")";
     }
