@@ -46,6 +46,14 @@ TEST_CASE("string conversion functions") {
     CHECK(uncapitalize("Text") == "text");
 }
 
+TEST_CASE("cpp type name") {
+    TypeRef objectType{TypeKind::Object, "Object"};
+    CHECK(cppTypeName(objectType) == "optional<Object>");
+    CHECK(cppTypeName(TypeRef{TypeKind::NonNull, {}, objectType}) == "Object");
+    CHECK(cppTypeName(TypeRef{TypeKind::List, {}, objectType}) == "optional<std::vector<optional<Object>>>");
+    CHECK(cppTypeName(TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, objectType}}}) == "std::vector<Object>");
+}
+
 TEST_CASE("description generation") {
 
     SUBCASE("empty description generates nothing") {

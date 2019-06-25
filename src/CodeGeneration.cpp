@@ -286,7 +286,7 @@ std::string cppTypeName(TypeRef const & type, bool shouldCheckNullability) {
             return cppScalarName(scalarType(type.name.value()));
 
         case TypeKind::List:
-            return "std::vector<" + cppTypeName(*type.ofType, false) + ">";
+            return "std::vector<" + cppTypeName(*type.ofType) + ">";
 
         case TypeKind::NonNull:
             return cppTypeName(*type.ofType, false);
