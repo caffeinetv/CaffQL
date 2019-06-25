@@ -54,6 +54,14 @@ TEST_CASE("cpp type name") {
     CHECK(cppTypeName(TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, objectType}}}) == "std::vector<Object>");
 }
 
+TEST_CASE("graphql type name") {
+    TypeRef objectType{TypeKind::Object, "Object"};
+    CHECK(graphqlTypeName(objectType) == "Object");
+    CHECK(graphqlTypeName(TypeRef{TypeKind::NonNull, {}, objectType}) == "Object!");
+    CHECK(graphqlTypeName(TypeRef{TypeKind::List, {}, objectType}) == "[Object]");
+    CHECK(graphqlTypeName(TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, objectType}}}) == "[Object!]!");
+}
+
 TEST_CASE("description generation") {
 
     SUBCASE("empty description generates nothing") {
