@@ -9,37 +9,34 @@ struct BoxedOptional {
 
     BoxedOptional() = default;
 
-    BoxedOptional(T value): value{new T{value}} {}
+    BoxedOptional(T value): value{std::make_unique<T>(std::move(value))} {}
 
     BoxedOptional(BoxedOptional const & optional) {
-        copyValueFrom(optional);
+        *this = optional;
     }
 
     BoxedOptional & operator = (BoxedOptional const & optional) {
         reset();
-        copyValueFrom(optional);
+        if (optional) {
+            value = std::make_unique<T>(*optional.value);
+        }
         return *this;
     }
 
     BoxedOptional(BoxedOptional && optional) {
-        stealValueFrom(optional);
+        *this = std::move(optional);
     }
 
     BoxedOptional & operator = (BoxedOptional && optional) {
         reset();
-        stealValueFrom(optional);
+        if (optional) {
+            value = std::move(optional.value);
+        }
         return *this;
     }
 
-    ~BoxedOptional() {
-        reset();
-    }
-
     void reset() {
-        if (value) {
-            delete value;
-            value = nullptr;
-        }
+        value.reset();
     }
 
     bool has_value() const {
@@ -59,29 +56,15 @@ struct BoxedOptional {
     }
 
     T * operator -> () {
-        return value;
+        return value.get();
     }
 
     T const * operator -> () const {
-        return value;
+        return value.get();
     }
 
 private:
-    T * value = nullptr;
-
-    void copyValueFrom(BoxedOptional const & optional) {
-        if (optional.value) {
-            value = new T{*optional.value};
-        }
-    }
-
-    void stealValueFrom(BoxedOptional & optional) {
-        if (optional.value) {
-            value = optional.value;
-            optional.value = nullptr;
-        }
-    }
-
+    std::unique_ptr<T> value;
 };
 
 template <typename T> bool operator == (BoxedOptional<T> const & lhs, BoxedOptional<T> const & rhs) {
