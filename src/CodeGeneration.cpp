@@ -1,5 +1,7 @@
 #include "CodeGeneration.hpp"
 
+#include <sstream>
+
 namespace caffql {
 
 void from_json(Json const & json, TypeRef & type) {
@@ -81,6 +83,10 @@ std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & typ
             case TypeKind::NonNull:
                 return false;
         }
+
+        std::ostringstream errorStream("Invalid TypeKind value: ");
+        errorStream << static_cast<int>(kind);
+        throw std::invalid_argument{ errorStream.str() };
     };
 
     for (auto const & type : types) {
@@ -265,7 +271,7 @@ Scalar scalarType(std::string const & name) {
         return Scalar::ID;
     }
 
-    throw std::runtime_error{"Unknown scalar type: " + name};
+    throw std::invalid_argument{"Invalid Scalar value: " + name};
 }
 
 std::string cppScalarName(Scalar scalar) {
@@ -281,6 +287,11 @@ std::string cppScalarName(Scalar scalar) {
         case Scalar::Boolean:
             return "bool";
     }
+
+
+    std::ostringstream errorStream("Invalid Scalar value: ");
+    errorStream << static_cast<int>(scalar);
+    throw std::invalid_argument{ errorStream.str() };
 }
 
 std::string cppTypeName(TypeRef const & type, bool shouldCheckNullability) {
@@ -305,6 +316,10 @@ std::string cppTypeName(TypeRef const & type, bool shouldCheckNullability) {
         case TypeKind::NonNull:
             return cppTypeName(*type.ofType, false);
     }
+
+    std::ostringstream errorStream("Invalid TypeKind value: ");
+    errorStream << static_cast<int>(type.kind);
+    throw std::invalid_argument{ errorStream.str() };
 }
 
 std::string graphqlTypeName(TypeRef const & type) {
@@ -323,6 +338,10 @@ std::string graphqlTypeName(TypeRef const & type) {
         case TypeKind::NonNull:
             return graphqlTypeName(*type.ofType) + "!";
     }
+
+    std::ostringstream errorStream("Invalid TypeKind value: ");
+    errorStream << static_cast<int>(type.kind);
+    throw std::invalid_argument{ errorStream.str() };
 }
 
 std::string cppVariant(std::vector<TypeRef> const & possibleTypes, std::string const & unknownTypeName) {
@@ -531,6 +550,10 @@ std::string operationQueryName(Operation operation) {
         case Operation::Subscription:
             return "subscription";
     }
+
+    std::ostringstream errorStream("Invalid Operation value: ");
+    errorStream << static_cast<int>(operation);
+    throw std::invalid_argument{ errorStream.str() };
 }
 
 std::string appendNameToVariablePrefix(std::string const & variablePrefix, std::string const & name) {
@@ -775,6 +798,10 @@ std::string algrebraicNamespaceName(AlgebraicNamespace algebraicNamespace) {
         case AlgebraicNamespace::Absl:
             return "absl";
     }
+
+    std::ostringstream errorStream("Invalid AlgebraicNamespace value: ");
+    errorStream << static_cast<int>(algebraicNamespace);
+    throw std::invalid_argument{ errorStream.str() };
 }
 
 static std::string generateOptionalSerialization(AlgebraicNamespace algebraicNamespace) {
@@ -823,8 +850,9 @@ namespace nlohmann {
 
 )";
 
-    char buffer[1000];
-    sprintf(buffer, format, optionalInclude, variantInclude, namespaceName.c_str(), namespaceName.c_str(), namespaceName.c_str());
+    size_t constexpr bufferSize = 1000;
+    char buffer[bufferSize];
+    sprintf_s(buffer, bufferSize, format, optionalInclude, variantInclude, namespaceName.c_str(), namespaceName.c_str(), namespaceName.c_str());
     return buffer;
 }
 
