@@ -1,6 +1,5 @@
 #pragma once
 #include "Json.hpp"
-#include <optional>
 
 namespace caffql {
 
