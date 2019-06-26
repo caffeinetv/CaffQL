@@ -81,6 +81,8 @@ std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & typ
             case TypeKind::NonNull:
                 return false;
         }
+
+        throw std::invalid_argument{ "Invalid TypeKind value: " + std::to_string(static_cast<int>(kind)) };
     };
 
     for (auto const & type : types) {
@@ -265,7 +267,7 @@ Scalar scalarType(std::string const & name) {
         return Scalar::ID;
     }
 
-    throw std::runtime_error{"Unknown scalar type: " + name};
+    throw std::invalid_argument{"Invalid Scalar value: " + name};
 }
 
 std::string cppScalarName(Scalar scalar) {
@@ -281,6 +283,9 @@ std::string cppScalarName(Scalar scalar) {
         case Scalar::Boolean:
             return "bool";
     }
+
+
+    throw std::invalid_argument{ "Invalid Scalar value: " + std::to_string(static_cast<int>(scalar)) };
 }
 
 std::string cppTypeName(TypeRef const & type, bool shouldCheckNullability) {
@@ -305,6 +310,8 @@ std::string cppTypeName(TypeRef const & type, bool shouldCheckNullability) {
         case TypeKind::NonNull:
             return cppTypeName(*type.ofType, false);
     }
+
+    throw std::invalid_argument{ "Invalid TypeKind value: " + std::to_string(static_cast<int>(type.kind)) };
 }
 
 std::string graphqlTypeName(TypeRef const & type) {
@@ -323,6 +330,8 @@ std::string graphqlTypeName(TypeRef const & type) {
         case TypeKind::NonNull:
             return graphqlTypeName(*type.ofType) + "!";
     }
+
+    throw std::invalid_argument{ "Invalid TypeKind value: " + std::to_string(static_cast<int>(type.kind)) };
 }
 
 std::string cppVariant(std::vector<TypeRef> const & possibleTypes, std::string const & unknownTypeName) {
@@ -531,6 +540,8 @@ std::string operationQueryName(Operation operation) {
         case Operation::Subscription:
             return "subscription";
     }
+
+    throw std::invalid_argument{ "Invalid Operation value: " + std::to_string(static_cast<int>(operation)) };
 }
 
 std::string appendNameToVariablePrefix(std::string const & variablePrefix, std::string const & name) {
@@ -775,6 +786,8 @@ std::string algrebraicNamespaceName(AlgebraicNamespace algebraicNamespace) {
         case AlgebraicNamespace::Absl:
             return "absl";
     }
+
+    throw std::invalid_argument{ "Invalid AlgebraicNamespace value: " + std::to_string(static_cast<int>(algebraicNamespace)) };
 }
 
 static std::string generateOptionalSerialization(AlgebraicNamespace algebraicNamespace) {
@@ -823,8 +836,9 @@ namespace nlohmann {
 
 )";
 
-    char buffer[1000];
-    sprintf(buffer, format, optionalInclude, variantInclude, namespaceName.c_str(), namespaceName.c_str(), namespaceName.c_str());
+    std::string buffer(1000, '\0');
+    int len = snprintf(&buffer[0], buffer.size(), format, optionalInclude, variantInclude, namespaceName.c_str(), namespaceName.c_str(), namespaceName.c_str());
+    buffer.resize(len);
     return buffer;
 }
 
