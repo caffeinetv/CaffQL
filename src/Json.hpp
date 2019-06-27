@@ -3,25 +3,25 @@
 #include "nlohmann/json.hpp"
 
 namespace nlohmann {
-    template <typename T>
-    struct adl_serializer<std::optional<T>> {
-        static void to_json(json & json, std::optional<T> const & opt) {
-            if (opt.has_value()) {
-                json = *opt;
-            } else {
-                json = nullptr;
-            }
+template <typename T>
+struct adl_serializer<std::optional<T>> {
+    static void to_json(json & json, std::optional<T> const & opt) {
+        if (opt.has_value()) {
+            json = *opt;
+        } else {
+            json = nullptr;
         }
+    }
 
-        static void from_json(const json & json, std::optional<T> & opt) {
-            if (json.is_null()) {
-                opt.reset();
-            } else {
-                opt = json.get<T>();
-            }
+    static void from_json(const json & json, std::optional<T> & opt) {
+        if (json.is_null()) {
+            opt.reset();
+        } else {
+            opt = json.get<T>();
         }
-    };
-}
+    }
+};
+} // namespace nlohmann
 
 namespace caffql {
 
@@ -42,4 +42,4 @@ void get_value_to(Json const & json, char const * key, std::optional<T> & target
     }
 }
 
-}
+} // namespace caffql

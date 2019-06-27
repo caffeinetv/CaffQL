@@ -1,5 +1,5 @@
-#include "doctest.h"
 #include "CodeGeneration.hpp"
+#include "doctest.h"
 
 using namespace caffql;
 
@@ -14,7 +14,8 @@ TEST_CASE("custom type sorting") {
         // Has field of type A and possible type B
         Type c{TypeKind::Interface, "C", "", {Field{a, "a"}}, {}, {}, {}, {b}};
         // Has field of type [C!]!
-        TypeRef nonNullListOfNonNullC{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, {c}}}};
+        TypeRef nonNullListOfNonNullC{
+                TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, {c}}}};
         Type d{TypeKind::Object, "D", "", {Field{nonNullListOfNonNullC}}};
         // Union of possible types A, B, C, D
         Type e{TypeKind::Union, "E", "", {}, {}, {}, {}, {a, b, c, d}};
@@ -37,7 +38,6 @@ TEST_CASE("custom type sorting") {
         auto types = sortCustomTypesByDependencyOrder({{TypeKind::Scalar}, {TypeKind::List}, {TypeKind::NonNull}});
         CHECK(types.empty());
     }
-
 }
 
 TEST_CASE("string conversion functions") {
@@ -51,7 +51,9 @@ TEST_CASE("cpp type name") {
     CHECK(cppTypeName(objectType) == "optional<Object>");
     CHECK(cppTypeName(TypeRef{TypeKind::NonNull, {}, objectType}) == "Object");
     CHECK(cppTypeName(TypeRef{TypeKind::List, {}, objectType}) == "optional<std::vector<optional<Object>>>");
-    CHECK(cppTypeName(TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, objectType}}}) == "std::vector<Object>");
+    CHECK(cppTypeName(TypeRef{
+                  TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, objectType}}}) ==
+          "std::vector<Object>");
 }
 
 TEST_CASE("graphql type name") {
@@ -59,18 +61,16 @@ TEST_CASE("graphql type name") {
     CHECK(graphqlTypeName(objectType) == "Object");
     CHECK(graphqlTypeName(TypeRef{TypeKind::NonNull, {}, objectType}) == "Object!");
     CHECK(graphqlTypeName(TypeRef{TypeKind::List, {}, objectType}) == "[Object]");
-    CHECK(graphqlTypeName(TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, objectType}}}) == "[Object!]!");
+    CHECK(graphqlTypeName(TypeRef{
+                  TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::NonNull, {}, objectType}}}) ==
+          "[Object!]!");
 }
 
 TEST_CASE("description generation") {
 
-    SUBCASE("null description generates nothing") {
-        CHECK(generateDescription(std::nullopt, 0) == "");
-    }
+    SUBCASE("null description generates nothing") { CHECK(generateDescription(std::nullopt, 0) == ""); }
 
-    SUBCASE("empty description generates nothing") {
-        CHECK(generateDescription("", 0) == "");
-    }
+    SUBCASE("empty description generates nothing") { CHECK(generateDescription("", 0) == ""); }
 
     SUBCASE("Description with no line breaks generates a single-line comment bounded by line breaks") {
         CHECK(generateDescription("Description", 0) == "// Description\n");
@@ -87,7 +87,6 @@ TEST_CASE("description generation") {
 )";
         CHECK("\n" + generateDescription(description, 2) == expected);
     }
-
 }
 
 TEST_CASE("enum generation") {
@@ -118,20 +117,14 @@ TEST_CASE("enum generation") {
 )";
         CHECK("\n" + generateEnumSerialization(enumType, 2) == expected);
     }
-    
 }
 
 TEST_CASE("interface generation") {
     Type interfaceType{TypeKind::Interface, "InterfaceType"};
 
-    interfaceType.fields = {
-        Field{TypeRef{TypeKind::NonNull, "", TypeRef{TypeKind::Object, "FieldType"}}, "field"}
-    };
+    interfaceType.fields = {Field{TypeRef{TypeKind::NonNull, "", TypeRef{TypeKind::Object, "FieldType"}}, "field"}};
 
-    interfaceType.possibleTypes = {
-        TypeRef{TypeKind::Object, "A"},
-        TypeRef{TypeKind::Object, "B"}
-    };
+    interfaceType.possibleTypes = {TypeRef{TypeKind::Object, "A"}, TypeRef{TypeKind::Object, "B"}};
 
     SUBCASE("type") {
         std::string expected = R"(
@@ -174,15 +167,11 @@ TEST_CASE("interface generation") {
 )";
         CHECK("\n" + generateInterfaceDeserialization(interfaceType, 2) == expected);
     }
-
 }
 
 TEST_CASE("union generation") {
     Type unionType{TypeKind::Union, "UnionType"};
-    unionType.possibleTypes = {
-        TypeRef{TypeKind::Object, "A"},
-        TypeRef{TypeKind::Object, "B"}
-    };
+    unionType.possibleTypes = {TypeRef{TypeKind::Object, "A"}, TypeRef{TypeKind::Object, "B"}};
 
     SUBCASE("type") {
         std::string expected = R"(
@@ -209,14 +198,11 @@ TEST_CASE("union generation") {
 )";
         CHECK("\n" + generateUnionDeserialization(unionType, 2) == expected);
     }
-
 }
 
 TEST_CASE("object generation") {
     Type objectType{TypeKind::Object, "ObjectType"};
-    objectType.fields = {
-        Field{TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::Object, "FieldType"}}, "field"}
-    };
+    objectType.fields = {Field{TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::Object, "FieldType"}}, "field"}};
 
     SUBCASE("type") {
         std::string expected = R"(
@@ -243,8 +229,7 @@ TEST_CASE("object generation") {
 TEST_CASE("input object generation") {
     Type inputObjectType{TypeKind::InputObject, "InputObjectType"};
     inputObjectType.inputFields = {
-        InputValue{TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::InputObject, "InputFieldType"}}, "field"}
-    };
+            InputValue{TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::InputObject, "InputFieldType"}}, "field"}};
 
     SUBCASE("type") {
         std::string expected = R"(
@@ -273,25 +258,28 @@ TEST_CASE("request function argument passing") {
         CHECK_FALSE(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "Int"}));
         CHECK_FALSE(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "Float"}));
         CHECK_FALSE(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "Boolean"}));
-        CHECK_FALSE(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::NonNull, {}, {TypeRef{TypeKind::Scalar, "Int"}}}));
+        CHECK_FALSE(shouldPassByReferenceToRequestFunction(
+                TypeRef{TypeKind::NonNull, {}, {TypeRef{TypeKind::Scalar, "Int"}}}));
     }
 
     SUBCASE("string primitive types should be passed by reference") {
         CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "String"}));
         CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::Scalar, "ID"}));
-        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::NonNull, {}, {TypeRef{TypeKind::Scalar, "String"}}}));
+        CHECK(shouldPassByReferenceToRequestFunction(
+                TypeRef{TypeKind::NonNull, {}, {TypeRef{TypeKind::Scalar, "String"}}}));
     }
 
     SUBCASE("lists should be passed by reference") {
         CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::List, {}, {TypeRef{TypeKind::Scalar, "Int"}}}));
-        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, {TypeRef{TypeKind::Scalar, "Int"}}}}));
+        CHECK(shouldPassByReferenceToRequestFunction(
+                TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, {TypeRef{TypeKind::Scalar, "Int"}}}}));
     }
 
     SUBCASE("input objects should be passed by reference") {
         CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::InputObject, "InputType"}));
-        CHECK(shouldPassByReferenceToRequestFunction(TypeRef{TypeKind::NonNull, {}, { TypeRef{TypeKind::InputObject, "InputType"}}}));
+        CHECK(shouldPassByReferenceToRequestFunction(
+                TypeRef{TypeKind::NonNull, {}, {TypeRef{TypeKind::InputObject, "InputType"}}}));
     }
-
 }
 
 TEST_CASE("query field generation") {
@@ -310,15 +298,11 @@ TEST_CASE("query field generation") {
 
     SUBCASE("object field") {
         Type subobjectType{TypeKind::Object, "Subobject"};
-        subobjectType.fields = {
-            Field{TypeRef{TypeKind::Scalar, "Float"}, "floatField"}
-        };
+        subobjectType.fields = {Field{TypeRef{TypeKind::Scalar, "Float"}, "floatField"}};
 
         Type objectType{TypeKind::Object, "Object"};
-        objectType.fields = {
-            Field{TypeRef{TypeKind::Scalar, "Int"}, "intField"},
-            Field{subobjectType, "subobjectField"}
-        };
+        objectType.fields = {Field{TypeRef{TypeKind::Scalar, "Int"}, "intField"},
+                             Field{subobjectType, "subobjectField"}};
 
         typeMap = {{"Object", objectType}, {"Subobject", subobjectType}};
 
@@ -338,9 +322,7 @@ TEST_CASE("query field generation") {
 
     SUBCASE("interface field") {
         Type interfaceType{TypeKind::Interface, "Interface"};
-        interfaceType.fields = {
-            Field{TypeRef{TypeKind::Scalar, "Int"}, "intField"}
-        };
+        interfaceType.fields = {Field{TypeRef{TypeKind::Scalar, "Int"}, "intField"}};
 
         Type impA{TypeKind::Object, "ImpA"};
         impA.fields = interfaceType.fields;
@@ -375,14 +357,10 @@ TEST_CASE("query field generation") {
         Type unionType{TypeKind::Union, "Union"};
 
         Type impA{TypeKind::Object, "ImpA"};
-        impA.fields = {
-            Field{TypeRef{TypeKind::Scalar, "Int"}, "intField"}
-        };
+        impA.fields = {Field{TypeRef{TypeKind::Scalar, "Int"}, "intField"}};
 
         Type impB{TypeKind::Object, "ImpB"};
-        impB.fields = {
-            Field{TypeRef{TypeKind::Scalar, "Float"}, "floatField"}
-        };
+        impB.fields = {Field{TypeRef{TypeKind::Scalar, "Float"}, "floatField"}};
 
         unionType.possibleTypes = {impA, impB};
 
@@ -409,9 +387,10 @@ TEST_CASE("query field generation") {
         Field field{TypeRef{TypeKind::Scalar, "Int"}, "field"};
 
         field.args = {
-            InputValue{TypeRef{TypeKind::Scalar, "Int"}, "argA"},
-            InputValue{TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::Scalar, "Int"}}}, "argB"}
-        };
+                InputValue{TypeRef{TypeKind::Scalar, "Int"}, "argA"},
+                InputValue{
+                        TypeRef{TypeKind::NonNull, {}, TypeRef{TypeKind::List, {}, TypeRef{TypeKind::Scalar, "Int"}}},
+                        "argB"}};
 
         auto expected = R"(
         field(
@@ -422,10 +401,8 @@ TEST_CASE("query field generation") {
 
         CHECK("\n" + generateQueryField(field, typeMap, "", variables, 2) == expected);
 
-        std::vector<QueryVariable> expectedVariables{
-            {field.args[0].name, field.args[0].type},
-            {field.args[1].name, field.args[1].type}
-        };
+        std::vector<QueryVariable> expectedVariables{{field.args[0].name, field.args[0].type},
+                                                     {field.args[1].name, field.args[1].type}};
 
         CHECK(variables == expectedVariables);
     }
@@ -434,9 +411,7 @@ TEST_CASE("query field generation") {
         Type objectType{TypeKind::Object, "Object"};
         Field nestedField{TypeRef{TypeKind::Scalar, "Int"}, "nestedField"};
 
-        nestedField.args = {
-            InputValue{TypeRef{TypeKind::Scalar, "Int"}, "nestedArg"}
-        };
+        nestedField.args = {InputValue{TypeRef{TypeKind::Scalar, "Int"}, "nestedArg"}};
 
         objectType.fields = {nestedField};
 
@@ -454,13 +429,10 @@ TEST_CASE("query field generation") {
 
         CHECK("\n" + generateQueryField(field, typeMap, "", variables, 2) == expected);
 
-        std::vector<QueryVariable> expectedVariables{
-            {"objectNestedFieldNestedArg", nestedField.args[0].type}
-        };
+        std::vector<QueryVariable> expectedVariables{{"objectNestedFieldNestedArg", nestedField.args[0].type}};
 
         CHECK(variables == expectedVariables);
     }
-
 }
 
 TEST_SUITE_END;

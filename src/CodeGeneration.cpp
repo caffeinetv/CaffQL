@@ -69,20 +69,20 @@ std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & typ
 
     auto isCustomType = [](TypeKind kind) {
         switch (kind) {
-            case TypeKind::Object:
-            case TypeKind::Interface:
-            case TypeKind::Union:
-            case TypeKind::Enum:
-            case TypeKind::InputObject:
-                return true;
+        case TypeKind::Object:
+        case TypeKind::Interface:
+        case TypeKind::Union:
+        case TypeKind::Enum:
+        case TypeKind::InputObject:
+            return true;
 
-            case TypeKind::Scalar:
-            case TypeKind::List:
-            case TypeKind::NonNull:
-                return false;
+        case TypeKind::Scalar:
+        case TypeKind::List:
+        case TypeKind::NonNull:
+            return false;
         }
 
-        throw std::invalid_argument{ "Invalid TypeKind value: " + std::to_string(static_cast<int>(kind)) };
+        throw std::invalid_argument{"Invalid TypeKind value: " + std::to_string(static_cast<int>(kind))};
     };
 
     for (auto const & type : types) {
@@ -93,7 +93,7 @@ std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & typ
 
         unordered_set<string> dependencies;
 
-        auto addDependency = [&](auto const &dependency) {
+        auto addDependency = [&](auto const & dependency) {
             if (dependency.name && isCustomType(dependency.kind)) {
                 typesToDependents[*dependency.name].insert(type.name);
                 dependencies.insert(*dependency.name);
@@ -137,7 +137,7 @@ std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & typ
             }
         }
 
-        for (auto const &addedName : addedTypeNames) {
+        for (auto const & addedName : addedTypeNames) {
             typesToDependencies.erase(addedName);
         }
 
@@ -149,9 +149,7 @@ std::vector<Type> sortCustomTypesByDependencyOrder(std::vector<Type> const & typ
     return sortedTypes;
 }
 
-std::string indent(size_t indentation) {
-    return std::string(indentation * spacesPerIndent, ' ');
-}
+std::string indent(size_t indentation) { return std::string(indentation * spacesPerIndent, ' '); }
 
 std::string generateDescription(std::optional<std::string> const & optionalDescription, size_t indentation) {
     if (!optionalDescription) {
@@ -246,7 +244,8 @@ std::string generateEnumSerialization(Type const & type, size_t indentation) {
     generated += indent(valueIndentation) + "{" + type.name + "::" + unknownCaseName + ", nullptr},\n";
 
     for (auto const & value : type.enumValues) {
-        generated += indent(valueIndentation) + "{" + type.name + "::" + screamingSnakeCaseToPascalCase(value.name) + ", \"" + value.name + "\"},\n";
+        generated += indent(valueIndentation) + "{" + type.name + "::" + screamingSnakeCaseToPascalCase(value.name) +
+                     ", \"" + value.name + "\"},\n";
     }
 
     generated += indent(indentation) + "});\n\n";
@@ -272,20 +271,20 @@ Scalar scalarType(std::string const & name) {
 
 std::string cppScalarName(Scalar scalar) {
     switch (scalar) {
-        case Scalar::Int:
-            return "int32_t";
-        case Scalar::Float:
-            return "double";
-        case Scalar::String:
-            return "std::string";
-        case Scalar::ID:
-            return cppIdTypeName;
-        case Scalar::Boolean:
-            return "bool";
+    case Scalar::Int:
+        return "int32_t";
+    case Scalar::Float:
+        return "double";
+    case Scalar::String:
+        return "std::string";
+    case Scalar::ID:
+        return cppIdTypeName;
+    case Scalar::Boolean:
+        return "bool";
     }
 
 
-    throw std::invalid_argument{ "Invalid Scalar value: " + std::to_string(static_cast<int>(scalar)) };
+    throw std::invalid_argument{"Invalid Scalar value: " + std::to_string(static_cast<int>(scalar))};
 }
 
 std::string cppTypeName(TypeRef const & type, bool shouldCheckNullability) {
@@ -294,44 +293,44 @@ std::string cppTypeName(TypeRef const & type, bool shouldCheckNullability) {
     }
 
     switch (type.kind) {
-        case TypeKind::Object:
-        case TypeKind::Interface:
-        case TypeKind::Union:
-        case TypeKind::Enum:
-        case TypeKind::InputObject:
-            return type.name.value();
+    case TypeKind::Object:
+    case TypeKind::Interface:
+    case TypeKind::Union:
+    case TypeKind::Enum:
+    case TypeKind::InputObject:
+        return type.name.value();
 
-        case TypeKind::Scalar:
-            return cppScalarName(scalarType(type.name.value()));
+    case TypeKind::Scalar:
+        return cppScalarName(scalarType(type.name.value()));
 
-        case TypeKind::List:
-            return "std::vector<" + cppTypeName(*type.ofType) + ">";
+    case TypeKind::List:
+        return "std::vector<" + cppTypeName(*type.ofType) + ">";
 
-        case TypeKind::NonNull:
-            return cppTypeName(*type.ofType, false);
+    case TypeKind::NonNull:
+        return cppTypeName(*type.ofType, false);
     }
 
-    throw std::invalid_argument{ "Invalid TypeKind value: " + std::to_string(static_cast<int>(type.kind)) };
+    throw std::invalid_argument{"Invalid TypeKind value: " + std::to_string(static_cast<int>(type.kind))};
 }
 
 std::string graphqlTypeName(TypeRef const & type) {
     switch (type.kind) {
-        case TypeKind::Scalar:
-        case TypeKind::Object:
-        case TypeKind::Union:
-        case TypeKind::Interface:
-        case TypeKind::Enum:
-        case TypeKind::InputObject:
-            return type.name.value();
+    case TypeKind::Scalar:
+    case TypeKind::Object:
+    case TypeKind::Union:
+    case TypeKind::Interface:
+    case TypeKind::Enum:
+    case TypeKind::InputObject:
+        return type.name.value();
 
-        case TypeKind::List:
-            return "[" + graphqlTypeName(*type.ofType) + "]";
+    case TypeKind::List:
+        return "[" + graphqlTypeName(*type.ofType) + "]";
 
-        case TypeKind::NonNull:
-            return graphqlTypeName(*type.ofType) + "!";
+    case TypeKind::NonNull:
+        return graphqlTypeName(*type.ofType) + "!";
     }
 
-    throw std::invalid_argument{ "Invalid TypeKind value: " + std::to_string(static_cast<int>(type.kind)) };
+    throw std::invalid_argument{"Invalid TypeKind value: " + std::to_string(static_cast<int>(type.kind))};
 }
 
 std::string cppVariant(std::vector<TypeRef> const & possibleTypes, std::string const & unknownTypeName) {
@@ -344,7 +343,8 @@ std::string cppVariant(std::vector<TypeRef> const & possibleTypes, std::string c
 }
 
 std::string generateDeserializationFunctionDeclaration(std::string const & typeName, size_t indentation) {
-    return indent(indentation) + "inline void from_json(" + cppJsonTypeName + " const & json, " + typeName + " & value) {\n";
+    return indent(indentation) + "inline void from_json(" + cppJsonTypeName + " const & json, " + typeName +
+           " & value) {\n";
 }
 
 std::string generateFieldDeserialization(Field const & field, size_t indentation) {
@@ -365,7 +365,8 @@ std::string generateFieldDeserialization(Field const & field, size_t indentation
     return generated;
 }
 
-std::string generateVariantDeserialization(Type const & type, std::string const & constructUnknown, size_t indentation) {
+std::string generateVariantDeserialization(
+        Type const & type, std::string const & constructUnknown, size_t indentation) {
     std::string generated;
 
     generated += generateDeserializationFunctionDeclaration(type.name, indentation);
@@ -408,8 +409,8 @@ std::string generateInterface(Type const & type, size_t indentation) {
         auto const typeNameConstRef = typeName + " const & ";
         interface += generateDescription(field.description, fieldIndentation);
         interface += indent(fieldIndentation) + typeNameConstRef + field.name + "() const {\n";
-        interface += indent(fieldIndentation + 1) + "return visit([](auto const & implementation) -> "
-        + typeNameConstRef + "{\n";
+        interface += indent(fieldIndentation + 1) + "return visit([](auto const & implementation) -> " +
+                     typeNameConstRef + "{\n";
         interface += indent(fieldIndentation + 2) + "return implementation." + field.name + ";\n";
         interface += indent(fieldIndentation + 1) + "}, implementation);\n";
         interface += indent(fieldIndentation) + "}\n\n";
@@ -438,8 +439,8 @@ std::string generateInterfaceUnknownCaseDeserialization(Type const & type, size_
 }
 
 std::string generateInterfaceDeserialization(Type const & type, size_t indentation) {
-    return generateInterfaceUnknownCaseDeserialization(type, indentation)
-    + generateVariantDeserialization(type, unknownCaseName + type.name + "(json)", indentation);
+    return generateInterfaceUnknownCaseDeserialization(type, indentation) +
+           generateVariantDeserialization(type, unknownCaseName + type.name + "(json)", indentation);
 }
 
 std::string generateUnion(Type const & type, size_t indentation) {
@@ -448,7 +449,8 @@ std::string generateUnion(Type const & type, size_t indentation) {
     auto const unknownTypeName = unknownCaseName + type.name;
     generated += indent(indentation) + "using " + unknownTypeName + " = monostate;\n";
     generated += generateDescription(type.description, indentation);
-    generated += indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) + ";\n\n";
+    generated += indent(indentation) + "using " + type.name + " = " + cppVariant(type.possibleTypes, unknownTypeName) +
+                 ";\n\n";
     return generated;
 }
 
@@ -513,14 +515,16 @@ std::string generateInputObject(Type const & type, size_t indentation) {
 }
 
 template <typename FieldType>
-static std::string generateFieldSerialization(FieldType const & field, const std::string & fieldPrefix, const std::string & jsonName, size_t indentation) {
+static std::string generateFieldSerialization(
+        FieldType const & field, const std::string & fieldPrefix, const std::string & jsonName, size_t indentation) {
     return indent(indentation) + jsonName + "[\"" + field.name + "\"] = " + fieldPrefix + field.name + ";\n";
 }
 
 std::string generateInputObjectSerialization(Type const & type, size_t indentation) {
     std::string generated;
 
-    generated += indent(indentation) + "inline void to_json(" + cppJsonTypeName + " & json, " + type.name + " const & value) {\n";
+    generated += indent(indentation) + "inline void to_json(" + cppJsonTypeName + " & json, " + type.name +
+                 " const & value) {\n";
 
     for (auto const & field : type.inputFields) {
         generated += generateFieldSerialization(field, "value.", "json", indentation + 1);
@@ -533,22 +537,27 @@ std::string generateInputObjectSerialization(Type const & type, size_t indentati
 
 std::string operationQueryName(Operation operation) {
     switch (operation) {
-        case Operation::Query:
-            return "query";
-        case Operation::Mutation:
-            return "mutation";
-        case Operation::Subscription:
-            return "subscription";
+    case Operation::Query:
+        return "query";
+    case Operation::Mutation:
+        return "mutation";
+    case Operation::Subscription:
+        return "subscription";
     }
 
-    throw std::invalid_argument{ "Invalid Operation value: " + std::to_string(static_cast<int>(operation)) };
+    throw std::invalid_argument{"Invalid Operation value: " + std::to_string(static_cast<int>(operation))};
 }
 
 std::string appendNameToVariablePrefix(std::string const & variablePrefix, std::string const & name) {
     return variablePrefix.empty() ? uncapitalize(name) : variablePrefix + capitalize(name);
 }
 
-std::string generateQueryField(Field const & field, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation) {
+std::string generateQueryField(
+        Field const & field,
+        TypeMap const & typeMap,
+        std::string const & variablePrefix,
+        std::vector<QueryVariable> & variables,
+        size_t indentation) {
     std::string generated;
 
     generated += indent(indentation) + field.name;
@@ -566,7 +575,12 @@ std::string generateQueryField(Field const & field, TypeMap const & typeMap, std
     auto const & underlyingFieldType = field.type.underlyingType();
     if (underlyingFieldType.kind != TypeKind::Scalar && underlyingFieldType.kind != TypeKind::Enum) {
         generated += " {\n";
-        generated += generateQueryFields(typeMap.at(underlyingFieldType.name.value()), typeMap, appendNameToVariablePrefix(variablePrefix, underlyingFieldType.name.value()), variables, indentation + 1);
+        generated += generateQueryFields(
+                typeMap.at(underlyingFieldType.name.value()),
+                typeMap,
+                appendNameToVariablePrefix(variablePrefix, underlyingFieldType.name.value()),
+                variables,
+                indentation + 1);
         generated += indent(indentation) + "}";
     }
 
@@ -575,7 +589,12 @@ std::string generateQueryField(Field const & field, TypeMap const & typeMap, std
     return generated;
 }
 
-std::string generateQueryFields(Type const & type, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation) {
+std::string generateQueryFields(
+        Type const & type,
+        TypeMap const & typeMap,
+        std::string const & variablePrefix,
+        std::vector<QueryVariable> & variables,
+        size_t indentation) {
     std::string generated;
 
     if (!type.possibleTypes.empty()) {
@@ -583,19 +602,26 @@ std::string generateQueryFields(Type const & type, TypeMap const & typeMap, std:
 
         for (auto const & possibleType : type.possibleTypes) {
             generated += indent(indentation) + "...on " + possibleType.name.value() + " {\n";
-            generated += generateQueryFields(typeMap.at(possibleType.name.value()), typeMap, appendNameToVariablePrefix(variablePrefix, possibleType.name.value()), variables, indentation + 1);
+            generated += generateQueryFields(
+                    typeMap.at(possibleType.name.value()),
+                    typeMap,
+                    appendNameToVariablePrefix(variablePrefix, possibleType.name.value()),
+                    variables,
+                    indentation + 1);
             generated += indent(indentation) + "}\n";
         }
     } else {
         for (auto const & field : type.fields) {
-            generated += generateQueryField(field, typeMap, appendNameToVariablePrefix(variablePrefix, field.name), variables, indentation);
+            generated += generateQueryField(
+                    field, typeMap, appendNameToVariablePrefix(variablePrefix, field.name), variables, indentation);
         }
     }
 
     return generated;
 }
 
-QueryDocument generateQueryDocument(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation) {
+QueryDocument generateQueryDocument(
+        Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation) {
     QueryDocument document;
     auto & query = document.query;
     auto & variables = document.variables;
@@ -619,42 +645,42 @@ bool shouldPassByReferenceToRequestFunction(TypeRef const & type) {
     auto currentType = &type;
     while (true) {
         switch (currentType->kind) {
-            case TypeKind::Scalar:
-                switch (scalarType(currentType->name.value())) {
-                    case Scalar::Int:
-                    case Scalar::Float:
-                    case Scalar::Boolean:
-                        return false;
-
-                    case Scalar::String:
-                    case Scalar::ID:
-                        return true;
-                }
-                break;
-
-            case TypeKind::Enum:
+        case TypeKind::Scalar:
+            switch (scalarType(currentType->name.value())) {
+            case Scalar::Int:
+            case Scalar::Float:
+            case Scalar::Boolean:
                 return false;
 
-            case TypeKind::Object:
-            case TypeKind::Interface:
-            case TypeKind::Union:
-            case TypeKind::InputObject:
-            case TypeKind::List:
+            case Scalar::String:
+            case Scalar::ID:
                 return true;
+            }
+            break;
 
-            case TypeKind::NonNull:
-                if (currentType->ofType) {
-                    currentType = &*currentType->ofType;
-                    continue;
-                } else {
-                    throw std::runtime_error{"Nonnull should be wrapped a type"};
-                }
+        case TypeKind::Enum:
+            return false;
+
+        case TypeKind::Object:
+        case TypeKind::Interface:
+        case TypeKind::Union:
+        case TypeKind::InputObject:
+        case TypeKind::List:
+            return true;
+
+        case TypeKind::NonNull:
+            if (currentType->ofType) {
+                currentType = &*currentType->ofType;
+                continue;
+            } else {
+                throw std::runtime_error{"Nonnull should be wrapped a type"};
+            }
         }
     }
-
 }
 
-std::string generateOperationRequestFunction(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation) {
+std::string generateOperationRequestFunction(
+        Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation) {
     auto const functionIndentation = indentation + 1;
     auto const queryIndentation = functionIndentation + 1;
 
@@ -678,14 +704,16 @@ std::string generateOperationRequestFunction(Field const & field, Operation oper
     generated += ") {\n";
 
     // Use raw string literal for the query.
-    generated += indent(functionIndentation) + cppJsonTypeName + " query = R\"(\n" + document.query + indent(functionIndentation) + ")\";\n";
+    generated += indent(functionIndentation) + cppJsonTypeName + " query = R\"(\n" + document.query +
+                 indent(functionIndentation) + ")\";\n";
     generated += indent(functionIndentation) + cppJsonTypeName + " variables;\n";
 
     for (auto const & variable : document.variables) {
         generated += generateFieldSerialization(variable, "", "variables", functionIndentation);
     }
 
-    generated += indent(functionIndentation) + "return {{\"query\", std::move(query)}, {\"variables\", std::move(variables)}};\n";
+    generated += indent(functionIndentation) +
+                 "return {{\"query\", std::move(query)}, {\"variables\", std::move(variables)}};\n";
 
     generated += indent(indentation) + "}\n\n";
 
@@ -728,7 +756,8 @@ std::string generateOperationResponseFunction(Field const & field, size_t indent
     return generated;
 }
 
-std::string generateOperationType(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation) {
+std::string generateOperationType(
+        Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation) {
     auto const document = generateQueryDocument(field, operation, typeMap, 0);
 
     std::string generated;
@@ -744,7 +773,8 @@ std::string generateOperationType(Field const & field, Operation operation, Type
     return generated;
 }
 
-std::string generateOperationTypes(Type const & type, Operation operation, TypeMap const & typeMap, size_t indentation) {
+std::string generateOperationTypes(
+        Type const & type, Operation operation, TypeMap const & typeMap, size_t indentation) {
     std::string generated;
 
     generated += indent(indentation) + "namespace " + type.name + " {\n\n";
@@ -764,7 +794,8 @@ std::string generateGraphqlErrorType(size_t indentation) {
     generated += indent(indentation + 1) + "std::string message;\n";
     generated += indent(indentation) + "};\n\n";
     generated += indent(indentation) + "template <typename Data>\n";
-    generated += indent(indentation) + "using GraphqlResponse = variant<Data, std::vector<" + grapqlErrorTypeName + ">>;\n\n";
+    generated += indent(indentation) + "using GraphqlResponse = variant<Data, std::vector<" + grapqlErrorTypeName +
+                 ">>;\n\n";
 
     return generated;
 }
@@ -781,13 +812,14 @@ std::string generateGraphqlErrorDeserialization(size_t indentation) {
 
 std::string algrebraicNamespaceName(AlgebraicNamespace algebraicNamespace) {
     switch (algebraicNamespace) {
-        case AlgebraicNamespace::Std:
-            return "std";
-        case AlgebraicNamespace::Absl:
-            return "absl";
+    case AlgebraicNamespace::Std:
+        return "std";
+    case AlgebraicNamespace::Absl:
+        return "absl";
     }
 
-    throw std::invalid_argument{ "Invalid AlgebraicNamespace value: " + std::to_string(static_cast<int>(algebraicNamespace)) };
+    throw std::invalid_argument{"Invalid AlgebraicNamespace value: " +
+                                std::to_string(static_cast<int>(algebraicNamespace))};
 }
 
 static std::string generateOptionalSerialization(AlgebraicNamespace algebraicNamespace) {
@@ -796,15 +828,15 @@ static std::string generateOptionalSerialization(AlgebraicNamespace algebraicNam
     char const * variantInclude;
 
     switch (algebraicNamespace) {
-        case AlgebraicNamespace::Std:
-            optionalInclude = "<optional>";
-            variantInclude = "<variant>";
-            break;
+    case AlgebraicNamespace::Std:
+        optionalInclude = "<optional>";
+        variantInclude = "<variant>";
+        break;
 
-        case AlgebraicNamespace::Absl:
-            optionalInclude = "\"absl/types/optional.h\"";
-            variantInclude = "\"absl/types/variant.h\"";
-            break;
+    case AlgebraicNamespace::Absl:
+        optionalInclude = "\"absl/types/optional.h\"";
+        variantInclude = "\"absl/types/variant.h\"";
+        break;
     }
 
 
@@ -837,12 +869,21 @@ namespace nlohmann {
 )";
 
     std::string buffer(1000, '\0');
-    int len = snprintf(&buffer[0], buffer.size(), format, optionalInclude, variantInclude, namespaceName.c_str(), namespaceName.c_str(), namespaceName.c_str());
+    int len = snprintf(
+            &buffer[0],
+            buffer.size(),
+            format,
+            optionalInclude,
+            variantInclude,
+            namespaceName.c_str(),
+            namespaceName.c_str(),
+            namespaceName.c_str());
     buffer.resize(len);
     return buffer;
 }
 
-std::string generateTypes(Schema const & schema, std::string const & generatedNamespace, AlgebraicNamespace algebraicNamespace) {
+std::string generateTypes(
+        Schema const & schema, std::string const & generatedNamespace, AlgebraicNamespace algebraicNamespace) {
     auto const sortedTypes = sortCustomTypesByDependencyOrder(schema.types);
 
     TypeMap typeMap;
@@ -854,7 +895,7 @@ std::string generateTypes(Schema const & schema, std::string const & generatedNa
     std::string source;
 
     source +=
-    R"(// This file was automatically generated and should not be edited.
+            R"(// This file was automatically generated and should not be edited.
 #pragma once
 
 #include <memory>
@@ -871,9 +912,10 @@ std::string generateTypes(Schema const & schema, std::string const & generatedNa
     source += indent(typeIndentation) + "using " + cppIdTypeName + " = std::string;\n";
 
     auto useAlgebraic = [&](char const * name) {
-        source += indent(typeIndentation) + "using " + algrebraicNamespaceName(algebraicNamespace) + "::" + name + ";\n";
+        source +=
+                indent(typeIndentation) + "using " + algrebraicNamespaceName(algebraicNamespace) + "::" + name + ";\n";
     };
-    
+
     useAlgebraic("optional");
     useAlgebraic("variant");
     useAlgebraic("monostate");
@@ -889,43 +931,43 @@ std::string generateTypes(Schema const & schema, std::string const & generatedNa
         };
 
         switch (type.kind) {
-            case TypeKind::Object:
-                if (isOperationType(schema.queryType)) {
-                    source += generateOperationTypes(type, Operation::Query, typeMap, typeIndentation);
-                } else if (isOperationType(schema.mutationType)) {
-                    source += generateOperationTypes(type, Operation::Mutation, typeMap, typeIndentation);
-                } else if (isOperationType(schema.subscriptionType)) {
-                    source += generateOperationTypes(type, Operation::Subscription, typeMap, typeIndentation);
-                } else {
-                    source += generateObject(type, typeIndentation);
-                    source += generateObjectDeserialization(type, typeIndentation);
-                }
-                break;
+        case TypeKind::Object:
+            if (isOperationType(schema.queryType)) {
+                source += generateOperationTypes(type, Operation::Query, typeMap, typeIndentation);
+            } else if (isOperationType(schema.mutationType)) {
+                source += generateOperationTypes(type, Operation::Mutation, typeMap, typeIndentation);
+            } else if (isOperationType(schema.subscriptionType)) {
+                source += generateOperationTypes(type, Operation::Subscription, typeMap, typeIndentation);
+            } else {
+                source += generateObject(type, typeIndentation);
+                source += generateObjectDeserialization(type, typeIndentation);
+            }
+            break;
 
-            case TypeKind::Interface:
-                source += generateInterface(type, typeIndentation);
-                source += generateInterfaceDeserialization(type, typeIndentation);
-                break;
+        case TypeKind::Interface:
+            source += generateInterface(type, typeIndentation);
+            source += generateInterfaceDeserialization(type, typeIndentation);
+            break;
 
-            case TypeKind::Union:
-                source += generateUnion(type, typeIndentation);
-                source += generateUnionDeserialization(type, typeIndentation);
-                break;
+        case TypeKind::Union:
+            source += generateUnion(type, typeIndentation);
+            source += generateUnionDeserialization(type, typeIndentation);
+            break;
 
-            case TypeKind::Enum:
-                source += generateEnum(type, typeIndentation);
-                source += generateEnumSerialization(type, typeIndentation);
-                break;
+        case TypeKind::Enum:
+            source += generateEnum(type, typeIndentation);
+            source += generateEnumSerialization(type, typeIndentation);
+            break;
 
-            case TypeKind::InputObject:
-                source += generateInputObject(type, typeIndentation);
-                source += generateInputObjectSerialization(type, typeIndentation);
-                break;
+        case TypeKind::InputObject:
+            source += generateInputObject(type, typeIndentation);
+            source += generateInputObjectSerialization(type, typeIndentation);
+            break;
 
-            case TypeKind::Scalar:
-            case TypeKind::List:
-            case TypeKind::NonNull:
-                break;
+        case TypeKind::Scalar:
+        case TypeKind::List:
+        case TypeKind::NonNull:
+            break;
         }
     }
 
@@ -934,4 +976,4 @@ std::string generateTypes(Schema const & schema, std::string const & generatedNa
     return source;
 }
 
-}
+} // namespace caffql
