@@ -1,6 +1,6 @@
+#include <fstream>
 #include "CodeGeneration.hpp"
 #include "cxxopts.hpp"
-#include <fstream>
 
 namespace caffql {
 
@@ -13,13 +13,14 @@ struct ProgramInputs {
 
 ProgramInputs parseCommandLine(int argc, char * argv[]) {
     try {
-        cxxopts::Options options("caffql", "Generate c++ types and GraphQL request and response serialization from a GraphQL json schema file.");
-        options.add_options()
-        ("s,schema", "input json schema file", cxxopts::value<std::string>())
-        ("o,output", "output generated header file", cxxopts::value<std::string>())
-        ("n,namespace", "generated namespace", cxxopts::value<std::string>()->default_value("caffql"))
-        ("a,absl", "use absl optional and variant instead of std")
-        ("h,help", "help");
+        cxxopts::Options options(
+                "caffql",
+                "Generate c++ types and GraphQL request and response serialization from a GraphQL json schema "
+                "file.");
+        options.add_options()("s,schema", "input json schema file", cxxopts::value<std::string>())(
+                "o,output", "output generated header file", cxxopts::value<std::string>())(
+                "n,namespace", "generated namespace", cxxopts::value<std::string>()->default_value("caffql"))(
+                "a,absl", "use absl optional and variant instead of std")("h,help", "help");
 
         auto result = options.parse(argc, argv);
 
@@ -38,19 +39,17 @@ ProgramInputs parseCommandLine(int argc, char * argv[]) {
             exit(1);
         }
 
-        return {
-            result["schema"].as<std::string>(),
-            result["output"].as<std::string>(),
-            result["namespace"].as<std::string>(),
-            result.count("absl") ? AlgebraicNamespace::Absl : AlgebraicNamespace::Std
-        };
+        return {result["schema"].as<std::string>(),
+                result["output"].as<std::string>(),
+                result["namespace"].as<std::string>(),
+                result.count("absl") ? AlgebraicNamespace::Absl : AlgebraicNamespace::Std};
     } catch (cxxopts::OptionException const & e) {
         printf("Error parsing options: %s\n", e.what());
         exit(1);
     }
 }
 
-}
+} // namespace caffql
 
 int main(int argc, char * argv[]) {
     using namespace caffql;

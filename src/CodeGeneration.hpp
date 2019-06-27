@@ -1,20 +1,14 @@
 #pragma once
-#include "BoxedOptional.hpp"
 #include <unordered_set>
+#include "BoxedOptional.hpp"
 
-#define CAFFQL_DEFINE_EQUALS(T, equals) \
-inline bool operator == (T const & lhs, T const & rhs) { \
-equals \
-} \
-inline bool operator != (T const & lhs, T const & rhs) { \
-return !(lhs == rhs); \
-} \
+#define CAFFQL_DEFINE_EQUALS(T, equals)                                                                                \
+    inline bool operator==(T const & lhs, T const & rhs) { equals }                                                    \
+    inline bool operator!=(T const & lhs, T const & rhs) { return !(lhs == rhs); }
 
 namespace caffql {
 
-enum class TypeKind {
-    Scalar, Object, Interface, Union, Enum, InputObject, List, NonNull
-};
+enum class TypeKind { Scalar, Object, Interface, Union, Enum, InputObject, List, NonNull };
 
 enum class Scalar {
     // 32 bit
@@ -39,14 +33,9 @@ struct TypeRef {
         }
         return *this;
     }
-
 };
 
-CAFFQL_DEFINE_EQUALS(TypeRef,
-    return lhs.kind == rhs.kind
-        && lhs.name == rhs.name
-        && lhs.ofType == rhs.ofType;
-)
+CAFFQL_DEFINE_EQUALS(TypeRef, return lhs.kind == rhs.kind && lhs.name == rhs.name && lhs.ofType == rhs.ofType;)
 
 struct InputValue {
     TypeRef type;
@@ -56,10 +45,7 @@ struct InputValue {
 };
 
 CAFFQL_DEFINE_EQUALS(InputValue,
-    return lhs.type == rhs.type
-        && lhs.name == rhs.name
-        && lhs.description == rhs.description;
-)
+                     return lhs.type == rhs.type && lhs.name == rhs.name && lhs.description == rhs.description;)
 
 struct Field {
     TypeRef type;
@@ -70,11 +56,8 @@ struct Field {
 };
 
 CAFFQL_DEFINE_EQUALS(Field,
-    return lhs.type == rhs.type
-        && lhs.name == rhs.name
-        && lhs.description == rhs.description
-        && lhs.args == rhs.args;
-)
+                     return lhs.type == rhs.type && lhs.name == rhs.name && lhs.description == rhs.description &&
+                            lhs.args == rhs.args;)
 
 struct EnumValue {
     std::string name;
@@ -82,10 +65,7 @@ struct EnumValue {
     // TODO: Deprecation
 };
 
-CAFFQL_DEFINE_EQUALS(EnumValue,
-    return lhs.name == rhs.name
-        && lhs.description == rhs.description;
-)
+CAFFQL_DEFINE_EQUALS(EnumValue, return lhs.name == rhs.name && lhs.description == rhs.description;)
 
 struct Type {
     TypeKind kind;
@@ -102,26 +82,16 @@ struct Type {
     // Interface and Union only
     std::vector<TypeRef> possibleTypes;
 
-    operator TypeRef () const {
-        return {kind, name};
-    }
-
+    operator TypeRef() const { return {kind, name}; }
 };
 
 CAFFQL_DEFINE_EQUALS(Type,
-    return lhs.kind == rhs.kind
-        && lhs.name == rhs.name
-        && lhs.description == rhs.description
-        && lhs.fields == rhs.fields
-        && lhs.inputFields == rhs.inputFields
-        && lhs.interfaces == rhs.interfaces
-        && lhs.enumValues == rhs.enumValues
-        && lhs.possibleTypes == rhs.possibleTypes;
-)
+                     return lhs.kind == rhs.kind && lhs.name == rhs.name && lhs.description == rhs.description &&
+                            lhs.fields == rhs.fields && lhs.inputFields == rhs.inputFields &&
+                            lhs.interfaces == rhs.interfaces && lhs.enumValues == rhs.enumValues &&
+                            lhs.possibleTypes == rhs.possibleTypes;)
 
-enum class Operation {
-    Query, Mutation, Subscription
-};
+enum class Operation { Query, Mutation, Subscription };
 
 struct Schema {
 
@@ -138,16 +108,16 @@ struct Schema {
 
 using TypeMap = std::unordered_map<std::string, Type>;
 
-NLOHMANN_JSON_SERIALIZE_ENUM(TypeKind, {
-    {TypeKind::Scalar, "SCALAR"},
-    {TypeKind::Object, "OBJECT"},
-    {TypeKind::Interface, "INTERFACE"},
-    {TypeKind::Union, "UNION"},
-    {TypeKind::Enum, "ENUM"},
-    {TypeKind::InputObject, "INPUT_OBJECT"},
-    {TypeKind::List, "LIST"},
-    {TypeKind::NonNull, "NON_NULL"}
-});
+NLOHMANN_JSON_SERIALIZE_ENUM(
+        TypeKind,
+        {{TypeKind::Scalar, "SCALAR"},
+         {TypeKind::Object, "OBJECT"},
+         {TypeKind::Interface, "INTERFACE"},
+         {TypeKind::Union, "UNION"},
+         {TypeKind::Enum, "ENUM"},
+         {TypeKind::InputObject, "INPUT_OBJECT"},
+         {TypeKind::List, "LIST"},
+         {TypeKind::NonNull, "NON_NULL"}});
 
 void from_json(Json const & json, TypeRef & type);
 
@@ -228,31 +198,41 @@ struct QueryVariable {
     TypeRef type;
 };
 
-CAFFQL_DEFINE_EQUALS(QueryVariable,
-    return lhs.name == rhs.name
-        && lhs.type == rhs.type;
-)
+CAFFQL_DEFINE_EQUALS(QueryVariable, return lhs.name == rhs.name && lhs.type == rhs.type;)
 
 std::string appendNameToVariablePrefix(std::string const & variablePrefix, std::string const & name);
 
-std::string generateQueryFields(Type const & type, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation);
+std::string generateQueryFields(
+        Type const & type,
+        TypeMap const & typeMap,
+        std::string const & variablePrefix,
+        std::vector<QueryVariable> & variables,
+        size_t indentation);
 
-std::string generateQueryField(Field const & field, TypeMap const & typeMap, std::string const & variablePrefix, std::vector<QueryVariable> & variables, size_t indentation);
+std::string generateQueryField(
+        Field const & field,
+        TypeMap const & typeMap,
+        std::string const & variablePrefix,
+        std::vector<QueryVariable> & variables,
+        size_t indentation);
 
 struct QueryDocument {
     std::string query;
     std::vector<QueryVariable> variables;
 };
 
-QueryDocument generateQueryDocument(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation);
+QueryDocument generateQueryDocument(
+        Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation);
 
 bool shouldPassByReferenceToRequestFunction(TypeRef const & type);
 
-std::string generateOperationRequestFunction(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation);
+std::string generateOperationRequestFunction(
+        Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation);
 
 std::string generateOperationResponseFunction(Field const & field, size_t indentation);
 
-std::string generateOperationType(Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation);
+std::string generateOperationType(
+        Field const & field, Operation operation, TypeMap const & typeMap, size_t indentation);
 
 std::string generateOperationTypes(Type const & type, Operation operation, TypeMap const & typeMap, size_t indentation);
 
@@ -260,13 +240,11 @@ std::string generateGraphqlErrorType(size_t indentation);
 
 std::string generateGraphqlErrorDeserialization(size_t indentation);
 
-enum class AlgebraicNamespace {
-    Std,
-    Absl
-};
+enum class AlgebraicNamespace { Std, Absl };
 
 std::string algrebraicNamespaceName(AlgebraicNamespace algebraicNamespace);
 
-std::string generateTypes(Schema const & schema, std::string const & generatedNamespace, AlgebraicNamespace algebraicNamespace);
+std::string generateTypes(
+        Schema const & schema, std::string const & generatedNamespace, AlgebraicNamespace algebraicNamespace);
 
-}
+} // namespace caffql

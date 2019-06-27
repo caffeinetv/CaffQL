@@ -1,5 +1,5 @@
-#include "doctest.h"
 #include "BoxedOptional.hpp"
+#include "doctest.h"
 
 using namespace caffql;
 
@@ -51,7 +51,6 @@ TEST_CASE("deserialization") {
         BoxedOptional<std::string> x = Json(nullptr);
         CHECK_FALSE(x);
     }
-
 }
 
 TEST_SUITE_END;
