@@ -765,6 +765,9 @@ std::string generateOperationType(
     generated += generateDescription(field.description, indentation);
     generated += indent(indentation) + "struct " + capitalize(field.name) + "Field" + " {\n\n";
 
+    generated += indent(indentation + 1) +
+                 "static Operation constexpr operation = Operation::" + capitalize(operationQueryName(operation)) +
+                 ";\n\n";
     generated += generateOperationRequestFunction(field, operation, typeMap, indentation + 1);
     generated += generateOperationResponseFunction(field, indentation + 1);
 
@@ -921,6 +924,8 @@ std::string generateTypes(
     useAlgebraic("monostate");
     useAlgebraic("visit");
     source += "\n";
+
+    source += indent(typeIndentation) + "enum class Operation { Query, Mutation, Subscription };\n\n";
 
     source += generateGraphqlErrorType(typeIndentation);
     source += generateGraphqlErrorDeserialization(typeIndentation);
