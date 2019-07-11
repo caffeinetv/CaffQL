@@ -580,6 +580,7 @@ std::string generateQueryField(
                 typeMap,
                 appendNameToVariablePrefix(variablePrefix, underlyingFieldType.name.value()),
                 variables,
+                {},
                 indentation + 1);
         generated += indent(indentation) + "}";
     }
@@ -594,27 +595,40 @@ std::string generateQueryFields(
         TypeMap const & typeMap,
         std::string const & variablePrefix,
         std::vector<QueryVariable> & variables,
+        std::vector<Field> const & ignoredFields,
         size_t indentation) {
     std::string generated;
+
+    auto addTypeFields = [&] {
+        for (auto const & field : type.fields) {
+            if (std::find(ignoredFields.begin(), ignoredFields.end(), field) == ignoredFields.end()) {
+                generated += generateQueryField(
+                        field, typeMap, appendNameToVariablePrefix(variablePrefix, field.name), variables, indentation);
+            }
+        }
+    };
 
     if (!type.possibleTypes.empty()) {
         generated += indent(indentation) + "__typename\n";
 
+        addTypeFields();
+
         for (auto const & possibleType : type.possibleTypes) {
-            generated += indent(indentation) + "...on " + possibleType.name.value() + " {\n";
-            generated += generateQueryFields(
+            auto possibleTypeQuery = generateQueryFields(
                     typeMap.at(possibleType.name.value()),
                     typeMap,
                     appendNameToVariablePrefix(variablePrefix, possibleType.name.value()),
                     variables,
+                    type.fields,
                     indentation + 1);
-            generated += indent(indentation) + "}\n";
+            if (!possibleTypeQuery.empty()) {
+                generated += indent(indentation) + "...on " + possibleType.name.value() + " {\n";
+                generated += possibleTypeQuery;
+                generated += indent(indentation) + "}\n";
+            }
         }
     } else {
-        for (auto const & field : type.fields) {
-            generated += generateQueryField(
-                    field, typeMap, appendNameToVariablePrefix(variablePrefix, field.name), variables, indentation);
-        }
+        addTypeFields();
     }
 
     return generated;

@@ -340,12 +340,9 @@ TEST_CASE("query field generation") {
         auto expected = R"(
         field {
             __typename
+            intField
             ...on ImpA {
-                intField
                 floatField
-            }
-            ...on ImpB {
-                intField
             }
         }
 )";

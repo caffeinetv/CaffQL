@@ -207,6 +207,7 @@ std::string generateQueryFields(
         TypeMap const & typeMap,
         std::string const & variablePrefix,
         std::vector<QueryVariable> & variables,
+        std::vector<Field> const & ignoredFields,
         size_t indentation);
 
 std::string generateQueryField(
