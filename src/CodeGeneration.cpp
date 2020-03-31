@@ -642,13 +642,17 @@ QueryDocument generateQueryDocument(
 
     auto selectionSet = generateQueryField(field, typeMap, "", variables, indentation + 1);
 
-    query += indent(indentation) + operationQueryName(operation) + " " + capitalize(field.name) + "(\n";
+    query += indent(indentation) + operationQueryName(operation) + " " + capitalize(field.name);
 
-    for (auto const & variable : variables) {
-        query += indent(indentation + 1) + "$" + variable.name + ": " + graphqlTypeName(variable.type) + "\n";
+    if (variables.size()) {
+        query += "(\n";
+        for (auto const & variable : variables) {
+            query += indent(indentation + 1) + "$" + variable.name + ": " + graphqlTypeName(variable.type) + "\n";
+        }
+        query += indent(indentation) + ")";
     }
 
-    query += indent(indentation) + ") {\n";
+    query += " {\n";
     query += selectionSet;
     query += indent(indentation) + "}\n";
 
